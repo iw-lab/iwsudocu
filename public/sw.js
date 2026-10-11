@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v9";
+const CACHE_VERSION = "v10";
 const STATIC_CACHE = `kanchaeum-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `kanchaeum-dynamic-${CACHE_VERSION}`;
 const IMMUTABLE_CACHE = `kanchaeum-immutable-${CACHE_VERSION}`;

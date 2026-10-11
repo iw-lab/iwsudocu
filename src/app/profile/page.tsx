@@ -10,6 +10,7 @@ import { BrainScoreChart } from '@/components/profile/BrainScoreChart';
 import { WeeklyReport } from '@/components/profile/WeeklyReport';
 import { StreakCalendar } from '@/components/profile/StreakCalendar';
 import { Button } from '@/components/ui/Button';
+import { WeeklyMissions } from '@/components/missions/WeeklyMissions';
 import { useUserStore } from '@/lib/store/userStore';
 
 export default function ProfilePage() {
@@ -24,6 +25,7 @@ export default function ProfilePage() {
       <Header />
 
       <main className="mx-auto max-w-lg space-y-4 px-4 pt-4">
+        <WeeklyMissions />
         {/* User name */}
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold text-white">{displayName}</h2>

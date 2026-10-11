@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { useUserStore } from '@/lib/store/userStore';
 import { useGameStore } from '@/lib/store/gameStore';
 import { getDailyBonus, kstToday } from '@/lib/game/daily';
+import { startWithTicket } from '@/lib/hub/gb';
 
 export function DailyPuzzle() {
   const router = useRouter();
@@ -19,9 +20,12 @@ export function DailyPuzzle() {
   const alreadyPlayed = (dailyCompletedDates ?? []).includes(todayStr);
   const bonus = getDailyBonus(todayStr);
 
+  // 판 시작 관문(이용권) — 클릭 안에서 바로
   const handlePlay = () => {
-    startDailyChallenge();
-    router.push('/play');
+    startWithTicket('daily', () => {
+      startDailyChallenge();
+      router.push('/play');
+    });
   };
 
   return (

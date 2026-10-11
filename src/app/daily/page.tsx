@@ -4,7 +4,6 @@ import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { DailyPuzzle } from '@/components/daily/DailyPuzzle';
 import { DailyCountdown } from '@/components/daily/DailyCountdown';
-import { DailyLeaderboard } from '@/components/daily/DailyLeaderboard';
 
 export default function DailyPage() {
   return (
@@ -16,7 +15,6 @@ export default function DailyPage() {
 
         <DailyPuzzle />
         <DailyCountdown />
-        <DailyLeaderboard />
       </main>
 
       <BottomNav />

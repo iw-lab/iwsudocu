@@ -124,12 +124,20 @@ function appendHistory(history: GameAction[], historyIndex: number, action: Game
 
 let genRequestId = 0;
 
+// 🔴 rAF 만 믿으면 숨은 탭(창 가림·최소화)에서 생성이 영영 안 일어난다(2026-07-26 실측 cells=0).
+//    한 프레임 그릴 기회를 주되, 120ms 안에 프레임이 안 오면 타이머가 대신 돌린다 — 먼저 오는 쪽 한 번만.
 function scheduleGeneration(run: () => void) {
-  if (typeof requestAnimationFrame !== 'undefined') {
-    requestAnimationFrame(() => setTimeout(run, 0));
-  } else {
-    setTimeout(run, 0);
+  let done = false;
+  const once = () => {
+    if (done) return;
+    done = true;
+    run();
+  };
+  const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+  if (typeof requestAnimationFrame !== 'undefined' && !hidden) {
+    requestAnimationFrame(() => setTimeout(once, 0));
   }
+  setTimeout(once, 120);
 }
 
 // ---------------------------------------------------------------------------
@@ -316,19 +324,8 @@ export const useGameStore = create<GameStore>()(
   },
 
   requestSession: (difficulty: Difficulty) => {
-    // Fire-and-forget: ask the server for a signed play-session token so the
-    // eventual score submission can be verified. Failures are ignored (offline).
-    if (typeof fetch === 'undefined') return;
-    fetch('/api/leaderboard?action=session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ difficulty }),
-    })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data && typeof data.token === 'string') set({ sessionToken: data.token });
-      })
-      .catch(() => { /* offline / static hosting without functions */ });
+    // 자유 닉네임 랭킹(서버 제출)을 걷어냈다 — 학교 순위는 키트 허브가 맡는다. 호출부 호환용으로만 남긴다.
+    void difficulty;
   },
 
   startDailyChallenge: () => {

@@ -14,6 +14,7 @@ import NumberPad from '@/components/game/NumberPad';
 import ComboIndicator from '@/components/game/ComboIndicator';
 import GameCompleteModal from '@/components/game/GameCompleteModal';
 import { BottomNav } from '@/components/layout/BottomNav';
+import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
 import { Header } from '@/components/layout/Header';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -22,6 +23,7 @@ import { bgmManager } from '@/lib/audio/bgmManager';
 import { DIFFICULTY_CONFIGS } from '@/lib/utils/constants';
 import { formatTime } from '@/lib/utils/format';
 import { kstToday } from '@/lib/game/daily';
+import { startWithTicket, hasTicket, finishTicket, leaveTicket } from '@/lib/hub/gb';
 import { isRewardedAdReady, showRewardedAd } from '@/lib/monetization/bridge';
 import toast from 'react-hot-toast';
 import type { Difficulty } from '@/types';
@@ -122,6 +124,11 @@ export default function PlayPage() {
   // Record local stats immediately on completion
   const resultRecorded = useRef(false);
 
+  // 학교 점수 정산 — 이기든 지든 판이 끝나면 영수증을 쓴다
+  useEffect(() => {
+    if (status === 'completed' || status === 'failed') void finishTicket(status === 'completed');
+  }, [status]);
+
   useEffect(() => {
     if (status === 'completed' && !resultRecorded.current) {
       resultRecorded.current = true;
@@ -162,34 +169,11 @@ export default function PlayPage() {
     }
   }, [status, getGameResult, recordGameResult, recordStreak]);
 
-  // Submit to leaderboard after user enters their nickname
-  const handleSubmitName = useCallback((playerName: string) => {
-    const result = getGameResult();
-    if (!result) return;
-    const puzzleId = useGameStore.getState().puzzle?.id ?? '';
-    const isDaily = puzzleId.startsWith('daily-');
-    const dateStr = kstToday();
-    fetch('/api/leaderboard', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        player_name: playerName,
-        score: result.totalScore,
-        difficulty: result.difficulty,
-        time_seconds: result.timeInSeconds,
-        mistakes: result.mistakes,
-        max_combo: result.maxCombo,
-        is_perfect: result.mistakes === 0 ? 1 : 0,
-        is_daily: isDaily ? 1 : 0,
-        daily_date: isDaily ? dateStr : undefined,
-        session_token: useGameStore.getState().sessionToken ?? undefined,
-      }),
-    }).catch(() => { /* silently fail for offline */ });
-  }, [getGameResult]);
-
+  // 판 시작 관문: 홈 «시작하기»에서 받아 온 이용권이 있으면 그대로, 없으면 여기서 받는다(클릭 안에서 바로)
   const handleSelectDifficulty = useCallback(
     (difficulty: Difficulty) => {
-      startNewGame(difficulty);
+      if (hasTicket('classic')) startNewGame(difficulty);
+      else startWithTicket('classic', () => startNewGame(difficulty));
     },
     [startNewGame]
   );
@@ -199,11 +183,15 @@ export default function PlayPage() {
   const handleNewGame = useCallback(() => {
     resultRecorded.current = false;
     const difficulty = useGameStore.getState().difficulty;
-    resetToIdle();
-    startNewGame(difficulty);
+    startWithTicket('classic', () => {
+      resetToIdle();
+      startNewGame(difficulty);
+    });
   }, [startNewGame, resetToIdle]);
 
   const handleGoHome = useCallback(() => {
+    const s = useGameStore.getState().status;
+    if (s === 'playing' || s === 'paused') void leaveTicket();
     resetToIdle();
     router.push('/');
   }, [router, resetToIdle]);
@@ -288,6 +276,7 @@ export default function PlayPage() {
   if (status === 'idle') {
     return (
       <div className="min-h-screen pb-24 pt-16">
+        <OnboardingModal />
         <Header />
         <main className="mx-auto max-w-lg px-4 pt-4">
           <DifficultySelector onSelect={handleSelectDifficulty} />
@@ -332,7 +321,6 @@ export default function PlayPage() {
         onClose={handleGoHome}
         onNewGame={handleNewGame}
         onGoHome={handleGoHome}
-        onSubmitName={handleSubmitName}
       />
 
       {/* Failed modal */}

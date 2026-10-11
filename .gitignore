@@ -50,3 +50,7 @@ android/local.properties
 twa-build/
 nul
 .claude/
+
+# 학교 허브 비밀(키트)
+.secrets/
+.wrangler/

@@ -50,7 +50,7 @@ export function BottomNav() {
               </div>
               <span
                 className={cn(
-                  'text-[10px] font-medium',
+                  'text-xs font-medium',
                   isActive ? 'text-indigo-400' : 'text-slate-500'
                 )}
               >

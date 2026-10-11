@@ -5,6 +5,7 @@ import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { AppUpdateChecker } from "@/components/AppUpdateChecker";
 import { IOSInstallPrompt } from "@/components/IOSInstallPrompt";
 import { AccessibilitySync } from "@/components/AccessibilitySync";
+import "../gb/gb-ui.css";
 import "./globals.css";
 
 export const metadata: Metadata = {

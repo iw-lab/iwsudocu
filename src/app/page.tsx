@@ -1,146 +1,96 @@
 'use client';
-
+// 첫 화면 = game-builder 기본틀 셸: 머리줄 → 학교 순위(맨 위·접지 않음) → «시작하기» 1개 → 모드 카드 → 보조 줄.
+// 판 시작은 전부 이용권 관문(startWithTicket)을 지난다 — 클릭 처리기 안에서 바로 불러야 자동 전체화면이 된다.
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Flame, Brain, Gamepad2, Calendar, Printer, HelpCircle } from 'lucide-react';
-import { Header } from '@/components/layout/Header';
+import { useRouter } from 'next/navigation';
+import { Maximize, Settings } from 'lucide-react';
 import { BottomNav } from '@/components/layout/BottomNav';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { useUserStore } from '@/lib/store/userStore';
-import { calculateBrainScore, getBrainScoreGrade } from '@/lib/game/brainScore';
-import { WeeklyMissions } from '@/components/missions/WeeklyMissions';
-import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
 import { StreakRiskBanner } from '@/components/home/StreakRiskBanner';
+import { useUserStore } from '@/lib/store/userStore';
+import { useGameStore } from '@/lib/store/gameStore';
+import { kstToday } from '@/lib/game/daily';
+import { mountRank, bindFullscreen, preloadHub, startWithTicket } from '@/lib/hub/gb';
+import { getBest, bestLabel } from '@/lib/mini/records';
+import type { RunKind } from '@/lib/mini/run';
+
+const RUN_CARDS: { kind: RunKind; emoji: string; label: string; desc: string }[] = [
+  { kind: 'time', emoji: '⏱️', label: '타임어택', desc: '90초 · 끝내면 +12초' },
+  { kind: 'survival', emoji: '❤️', label: '서바이벌', desc: '하트 3개 · 점점 커져요' },
+  { kind: 'rule', emoji: '✖️', label: '대각선', desc: '대각선도 겹치면 안 돼요' },
+];
 
 export default function HomePage() {
-  const profile = useUserStore((s) => s.profile);
-  const brainScore = calculateBrainScore(profile.stats);
-  const grade = getBrainScoreGrade(brainScore);
+  const router = useRouter();
+  const rankRef = useRef<HTMLDivElement>(null);
+  const modesRef = useRef<HTMLDivElement>(null);
+  const fsRef = useRef<HTMLButtonElement>(null);
+  const streak = useUserStore((s) => s.profile.streak.currentStreak);
+  const dailyDone = useUserStore((s) => (s.profile.dailyCompletedDates ?? []).includes(kstToday()));
+  const startDailyChallenge = useGameStore((s) => s.startDailyChallenge);
+
+  useEffect(() => {
+    if (rankRef.current) void mountRank(rankRef.current);
+    void bindFullscreen(fsRef.current);
+    let alive = true;
+    void Promise.all([preloadHub(), import('@/gb/gb-modes.js')]).then(([, modes]) => {
+      const el = modesRef.current;
+      if (!alive || !el) return;
+      const cards = [
+        ...RUN_CARDS.map((c) => ({ id: c.kind, kind: c.kind, emoji: c.emoji, label: c.label, desc: c.desc, best: bestLabel(c.kind, getBest(c.kind)?.value) })),
+        { id: 'daily', kind: 'daily' as const, emoji: '📅', label: '오늘의 퍼즐', desc: '하루 한 판 · 연속 도전', best: dailyDone ? '오늘 완료 ✓' : streak > 0 ? `연속 ${streak}일` : '' },
+      ];
+      modes.renderModeCards(el, cards, (id) => {
+        if (id === 'daily') {
+          if (dailyDone) router.push('/daily');
+          else startWithTicket('daily', () => { startDailyChallenge(); router.push('/play'); });
+          return;
+        }
+        const kind = id as RunKind;
+        startWithTicket(kind, () => router.push(`/${kind}`));
+      });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [router, streak, dailyDone, startDailyChallenge]);
+
+  const play = () => startWithTicket('classic', () => router.push('/play'));
 
   return (
-    <div className="min-h-screen pb-24 pt-16">
-      <OnboardingModal />
-      <Header />
-
-      <main className="mx-auto max-w-lg space-y-6 px-4 pt-4">
-        {/* Hero */}
-        <div className="flex flex-col items-center space-y-3 py-6">
-          <h1 className="text-3xl font-extrabold tracking-tight">
-            <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-              칸채움
-            </span>
-          </h1>
-          <p className="text-center text-sm text-slate-400">
-            매일 새로운 도전, 매일 더 강해지는 두뇌
-          </p>
-        </div>
-
-        {/* Streak-at-risk warning (countdown to the KST reset) */}
-        <StreakRiskBanner />
-
-        {/* Daily challenge banner */}
-        <Link href="/daily">
-          <Card className="relative overflow-hidden bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border-indigo-500/20 hover:border-indigo-500/40 transition-all">
-            <div className="absolute -right-4 -top-4 h-20 w-20 rounded-full bg-indigo-500/10" />
-            <div className="relative flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/20">
-                <Calendar className="h-6 w-6 text-indigo-400" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-white">오늘의 도전</p>
-                <p className="text-xs text-slate-400">
-                  매일 새로운 퍼즐에 도전하세요
-                </p>
-              </div>
-            </div>
-          </Card>
-        </Link>
-
-        {/* Quick start buttons */}
-        <div className="space-y-2">
-          <Link href="/play">
-            <Button className="w-full" size="lg">
-              <Gamepad2 className="h-5 w-5" />
-              게임 시작
-            </Button>
-          </Link>
-          <div className="grid grid-cols-2 gap-2">
-            <Link href="/help">
-              <Button variant="secondary" className="w-full" size="lg">
-                <HelpCircle className="h-5 w-5" />
-                도움말
-              </Button>
-            </Link>
-            <Link href="/print">
-              <Button variant="secondary" className="w-full" size="lg">
-                <Printer className="h-5 w-5" />
-                인쇄하기
-              </Button>
+    <div className="min-h-screen px-4 pb-28 pt-3 safe-top">
+      <div className="gb-home">
+        <div className="gb-home-top">
+          <div className="gb-brand">
+            <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">칸채움</span>
+          </div>
+          <div className="gb-tools">
+            <button ref={fsRef} type="button" className="gb-icon" data-gb="fullscreen" aria-label="전체화면">
+              <Maximize className="h-5 w-5" />
+            </button>
+            <Link href="/settings" className="gb-icon" aria-label="설정">
+              <Settings className="h-5 w-5" />
             </Link>
           </div>
         </div>
 
-        {/* Current streak and brain score row */}
-        <div className="grid grid-cols-2 gap-3">
-          {/* Streak banner */}
-          <Card className="flex flex-col items-center py-4">
-            <Flame className="h-6 w-6 text-orange-400" />
-            <span className="mt-1 text-2xl font-extrabold text-orange-400 font-number">
-              {profile.streak.currentStreak}
-            </span>
-            <span className="text-xs text-slate-400">일 연속</span>
-            {profile.streak.currentStreak > 0 && (
-              <span className="mt-1 text-[10px] text-slate-500">
-                최장: {profile.streak.longestStreak}일
-              </span>
-            )}
-          </Card>
+        <div ref={rankRef} />
 
-          {/* Brain score mini widget */}
-          <Card className="flex flex-col items-center py-4">
-            <Brain className="h-6 w-6" style={{ color: grade.color }} />
-            <span
-              className="mt-1 text-2xl font-extrabold font-number"
-              style={{ color: grade.color }}
-            >
-              {brainScore}
-            </span>
-            <span className="text-xs text-slate-400">두뇌 점수</span>
-            <span
-              className="mt-1 text-[10px] font-bold"
-              style={{ color: grade.color }}
-            >
-              {grade.grade} - {grade.labelKo}
-            </span>
-          </Card>
+        <button type="button" className="gb-play" data-gb="play" data-gb-mode="classic" onClick={play}>
+          🧩 시작하기 <span className="text-sm font-semibold opacity-80">· 클래식 9×9</span>
+        </button>
+
+        <div ref={modesRef} />
+
+        <StreakRiskBanner />
+
+        <div className="gb-sub">
+          <button type="button" onClick={() => router.push('/help')}>도움말</button>
+          <button type="button" onClick={() => router.push('/print')}>인쇄</button>
+          <button type="button" onClick={() => router.push('/leaderboard')}>내 기록</button>
+          <button type="button" onClick={() => router.push('/shop')}>상점</button>
         </div>
-
-        {/* Weekly missions */}
-        <WeeklyMissions />
-
-        {/* Stats summary */}
-        <div className="grid grid-cols-3 gap-2">
-          <Card className="flex flex-col items-center py-3">
-            <span className="text-lg font-bold text-white font-number">
-              {profile.stats.totalGamesWon}
-            </span>
-            <span className="text-[10px] text-slate-400">승리</span>
-          </Card>
-          <Card className="flex flex-col items-center py-3">
-            <span className="text-lg font-bold text-white font-number">
-              {Math.round(profile.stats.winRate)}%
-            </span>
-            <span className="text-[10px] text-slate-400">승률</span>
-          </Card>
-          <Card className="flex flex-col items-center py-3">
-            <span className="text-lg font-bold text-white font-number">
-              {profile.stats.maxCombo}
-            </span>
-            <span className="text-[10px] text-slate-400">최대 콤보</span>
-          </Card>
-        </div>
-      </main>
-
+      </div>
       <BottomNav />
     </div>
   );

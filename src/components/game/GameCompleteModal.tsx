@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trophy, Home, RotateCcw, Star, Zap, Send } from "lucide-react";
+import { Trophy, Home, RotateCcw, Star, Zap } from "lucide-react";
 import confetti from "canvas-confetti";
 import { cn } from "@/lib/utils/cn";
 import { formatTime, formatNumber } from "@/lib/utils/format";
@@ -10,14 +10,12 @@ import { useGameStore } from "@/lib/store/gameStore";
 import { useUserStore } from "@/lib/store/userStore";
 import { calculateRewards } from "@/lib/game/scoring";
 import { getStreakMultiplier } from "@/lib/game/streak";
-import { validateNickname } from "@/lib/game/profanity";
 
 interface GameCompleteModalProps {
   isOpen: boolean;
   onClose: () => void;
   onNewGame: () => void;
   onGoHome: () => void;
-  onSubmitName: (name: string) => void;
 }
 
 interface ScoreLine {
@@ -61,7 +59,6 @@ export default function GameCompleteModal({
   onClose,
   onNewGame,
   onGoHome,
-  onSubmitName,
 }: GameCompleteModalProps) {
   const gameResult = useGameStore((s) => s.getGameResult);
   const elapsedTime = useGameStore((s) => s.elapsedTime);
@@ -69,12 +66,8 @@ export default function GameCompleteModal({
   const maxCombo = useGameStore((s) => s.maxCombo);
 
   const [visibleLines, setVisibleLines] = useState(0);
-  const [nickname, setNickname] = useState("");
-  const [nameSubmitted, setNameSubmitted] = useState(false);
-  const [nameError, setNameError] = useState<string | null>(null);
   const confettiFired = useRef(false);
   const animationStarted = useRef(false);
-  const submitCalledRef = useRef(false);
 
   const result = gameResult();
   const streakCurrent = useUserStore((s) => s.profile.streak.currentStreak);
@@ -89,32 +82,6 @@ export default function GameCompleteModal({
       })
     : { xp: 0, coins: 0 };
 
-  // Initialize nickname when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      const saved = useUserStore.getState().profile.displayName;
-      setNickname(saved === "Player" || saved === "플레이어" ? "" : saved);
-      setNameSubmitted(false);
-      submitCalledRef.current = false;
-    }
-  }, [isOpen]);
-
-  const handleSubmitName = useCallback(() => {
-    if (submitCalledRef.current) return;
-    const check = validateNickname(nickname);
-    if (!check.ok) {
-      setNameError(check.reason ?? "사용할 수 없는 닉네임입니다.");
-      return;
-    }
-    submitCalledRef.current = true;
-    const finalName = nickname.trim() || "익명";
-    useUserStore.getState().setDisplayName(finalName);
-    onSubmitName(finalName);
-    setNameSubmitted(true);
-  }, [nickname, onSubmitName]);
-
-  // Closing is NOT consent to publish. Leaving without pressing submit must
-  // never post the run to the public leaderboard on the player's behalf.
   const handleClose = useCallback(() => {
     onClose();
   }, [onClose]);
@@ -328,70 +295,6 @@ export default function GameCompleteModal({
               </motion.div>
             )}
 
-            {/* Nickname input for leaderboard */}
-            {visibleLines >= scoreLines.length && !nameSubmitted && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="px-6 pb-4"
-              >
-                <label className="block text-xs text-white/50 mb-1.5">
-                  랭킹에 등록할 닉네임{" "}
-                  <span className="text-white/30">(선택 — 등록해야 공개됩니다)</span>
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={nickname}
-                    onChange={(e) => {
-                      setNickname(e.target.value.slice(0, 20));
-                      if (nameError) setNameError(null);
-                    }}
-                    onKeyDown={(e) => e.key === "Enter" && handleSubmitName()}
-                    placeholder="닉네임 입력"
-                    maxLength={20}
-                    className={cn(
-                      "flex-1 px-3 py-2.5 rounded-xl text-sm font-medium",
-                      "bg-white/10 text-white placeholder-white/30",
-                      "border border-white/10 focus:border-indigo-400/50",
-                      "outline-none transition-colors",
-                    )}
-                    autoFocus
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSubmitName}
-                    className={cn(
-                      "px-4 py-2.5 rounded-xl",
-                      "bg-gradient-to-r from-indigo-500 to-purple-600 text-white",
-                      "font-semibold text-sm shadow-lg shadow-indigo-500/25",
-                      "hover:shadow-xl hover:shadow-indigo-500/40",
-                      "transition-all duration-150",
-                      "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400",
-                    )}
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
-                </div>
-                {nameError && (
-                  <p className="mt-1.5 text-xs text-red-400">{nameError}</p>
-                )}
-              </motion.div>
-            )}
-
-            {/* Action buttons - show after name submitted */}
-            {visibleLines >= scoreLines.length && nameSubmitted && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="px-6 pb-2"
-              >
-                <p className="text-center text-xs text-emerald-400 mb-3">
-                  랭킹에 등록되었습니다!
-                </p>
-              </motion.div>
-            )}
 
             {/* Action buttons — always reachable, with or without a ranking
                 submission, so the modal is never a dead end. */}

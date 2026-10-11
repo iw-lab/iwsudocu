@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 기본틀 키트 원본 — 고치지 않는다(게이트 S2 가 정본 해시와 비교). 키트 쪽에서 고친다.
+    "src/gb/**",
+    "hub/**",
+    ".wrangler/**",
   ]),
 ]);
 

@@ -5,7 +5,6 @@ import { updateStreak } from '../src/lib/game/streak.ts';
 import { checkCompletions } from '../src/lib/game/celebrations.ts';
 import { checkAchievements } from '../src/lib/game/achievements.ts';
 import { checkDailyBonus, getDailyBonus, getWeekId, getWeeklyMissionTemplates } from '../src/lib/game/daily.ts';
-import { containsProfanity } from '../src/lib/game/profanity.ts';
 
 let n = 0;
 const ok = (label) => { n++; console.log('  ✓', label); };
@@ -68,9 +67,10 @@ const wk = getWeekId(new Date('2026-07-19T00:00:00Z'));
 assert.strictEqual(getWeeklyMissionTemplates(wk).length, 3);
 ok('weekly missions produce 3 deterministic entries');
 
-// 9. Profanity guard.
-assert.strictEqual(containsProfanity('normalname'), false);
-assert.strictEqual(containsProfanity('f u c k'), true);
-ok('profanity guard catches spaced evasion');
+// 9. 자유 입력 닉네임(욕설 필터 대상)은 걷어냈다 — 이름 입력 칸이 다시 생기지 않았는지 본다.
+const fsMod = await import('node:fs');
+const modal = fsMod.readFileSync(new URL('../src/components/game/GameCompleteModal.tsx', import.meta.url), 'utf8');
+assert.ok(!/<input/.test(modal), '결과 창에 자유 입력 칸이 없다');
+ok('no free-text name input on the result modal');
 
 console.log(`\nAll ${n} logic checks passed.`);

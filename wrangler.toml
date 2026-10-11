@@ -1,8 +1,3 @@
-name = "numero-quest"
+name = "kanchaeum"
 compatibility_date = "2024-12-01"
 pages_build_output_dir = "out"
-
-[[d1_databases]]
-binding = "DB"
-database_name = "numero-quest-db"
-database_id = "49f0584d-e473-41a9-91c6-a63dc422e44b"

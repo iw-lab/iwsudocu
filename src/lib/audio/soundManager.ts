@@ -1,8 +1,77 @@
 type SoundName = 'tap' | 'place' | 'correct' | 'wrong' | 'combo1' | 'combo2' | 'combo3' | 'comboMax' | 'comboBreak' | 'hint' | 'undo' | 'complete' | 'levelUp' | 'achievement' | 'streak' | 'dailyComplete' | 'powerup';
 
+// 효과음 파일(game-builder gen-sfx.py 오프라인 렌더 · public/sfx) — 이름 → 파일. 못 불러오면 아래 합성음으로 대신 운다.
+const FILES: Partial<Record<SoundName, string>> = {
+  tap: 'click', place: 'select', correct: 'point', wrong: 'error', combo1: 'coin', combo2: 'coin', combo3: 'coin',
+  comboMax: 'gauge_full', comboBreak: 'lose', hint: 'powerup', undo: 'swoosh', complete: 'win', levelUp: 'gauge_full',
+  achievement: 'special', streak: 'coin', dailyComplete: 'win', powerup: 'powerup',
+};
+const VOLUME: Partial<Record<SoundName, number>> = { tap: 0.35, place: 0.5, undo: 0.4 };
+
 class SoundManager {
   private audioContext: AudioContext | null = null;
   private enabled = true;
+  private buffers = new Map<string, AudioBuffer>();
+  private loading = false;
+  private unlockBound = false;
+
+  /** 첫 사용자 입력에서 AudioContext 를 깨운다(안 하면 배포 후 무음 1순위) + 효과음 파일 미리 받기 */
+  bindUnlock() {
+    if (this.unlockBound || typeof window === 'undefined') return;
+    this.unlockBound = true;
+    const wake = () => {
+      try {
+        const ctx = this.getContext();
+        if (ctx.state === 'suspended') void ctx.resume();
+        void this.preload();
+      } catch {
+        // 오디오를 못 쓰는 기기
+      }
+    };
+    window.addEventListener('pointerdown', wake, { capture: true });
+    window.addEventListener('keydown', wake, { capture: true });
+  }
+
+  private async preload() {
+    if (this.loading) return;
+    this.loading = true;
+    const ctx = this.getContext();
+    const names = [...new Set(Object.values(FILES))] as string[];
+    await Promise.all(names.map(async (n) => {
+      try {
+        const res = await fetch(`/sfx/${n}.web.mp3`);
+        if (!res.ok) return;
+        this.buffers.set(n, await ctx.decodeAudioData(await res.arrayBuffer()));
+      } catch {
+        // 파일 실패 — 합성음 폴백
+      }
+    }));
+  }
+
+  /** 파일로 울렸으면 true */
+  private playFile(sound: SoundName): boolean {
+    const name = FILES[sound];
+    const buf = name ? this.buffers.get(name) : undefined;
+    if (!buf) return false;
+    try {
+      const ctx = this.getContext();
+      const src = ctx.createBufferSource();
+      const g = ctx.createGain();
+      g.gain.value = VOLUME[sound] ?? 0.7;
+      src.buffer = buf;
+      src.connect(g);
+      g.connect(ctx.destination);
+      src.start();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** e2e 용: 지금 몇 개 파일이 준비됐나·컨텍스트 상태 */
+  status() {
+    return { files: this.buffers.size, state: this.audioContext?.state ?? 'none' };
+  }
 
   private getContext(): AudioContext {
     if (!this.audioContext) {
@@ -42,6 +111,7 @@ class SoundManager {
 
   play(sound: SoundName) {
     if (!this.enabled) return;
+    if (this.playFile(sound)) return;
 
     switch (sound) {
       case 'tap':

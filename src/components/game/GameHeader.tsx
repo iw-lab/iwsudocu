@@ -1,11 +1,13 @@
 'use client';
 
-import { Heart, Pause, Play } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { Heart, Maximize, Pause, Play } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils/cn';
 import { formatTime } from '@/lib/utils/format';
 import { DIFFICULTY_CONFIGS } from '@/lib/utils/constants';
 import { useGameStore } from '@/lib/store/gameStore';
+import { bindFullscreen } from '@/lib/hub/gb';
 
 export default function GameHeader() {
   const difficulty = useGameStore((s) => s.difficulty);
@@ -19,6 +21,10 @@ export default function GameHeader() {
   const config = DIFFICULTY_CONFIGS[difficulty];
   const isPaused = status === 'paused';
   const remainingLives = maxMistakes - mistakes;
+  const fsRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    void bindFullscreen(fsRef.current);
+  }, []);
 
   return (
     <div className="flex items-center justify-between w-full max-w-[420px] mx-auto px-2 py-2">
@@ -77,12 +83,23 @@ export default function GameHeader() {
           ))}
         </div>
 
+        {/* 전체화면(기본틀: 홈 머리줄 + 게임 상단 둘 다) */}
+        <button
+          ref={fsRef}
+          type="button"
+          data-gb="fullscreen"
+          aria-label="전체화면"
+          className="grid h-11 w-11 place-items-center rounded-lg bg-white/10 text-white/70 hover:bg-white/20 hover:text-white"
+        >
+          <Maximize className="w-4 h-4" />
+        </button>
+
         {/* Pause / Resume button */}
         <button
           type="button"
           onClick={isPaused ? resumeGame : pauseGame}
           className={cn(
-            'p-1.5 rounded-lg',
+            'grid h-11 w-11 place-items-center rounded-lg',
             'bg-white/10 hover:bg-white/20 text-white/70 hover:text-white',
             'transition-all duration-150',
             'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400',
