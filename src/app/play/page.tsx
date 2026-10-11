@@ -124,6 +124,12 @@ export default function PlayPage() {
   // Record local stats immediately on completion
   const resultRecorded = useRef(false);
 
+  // 이 화면을 떠날 때(하단 메뉴·뒤로) 아직 안 끝난 판의 영수증은 돌려준다 — 난이도를 고르기 전에 나가도 이용권이 날아가지 않게
+  useEffect(() => () => {
+    const st = useGameStore.getState().status;
+    if (st !== 'completed' && st !== 'failed') void leaveTicket();
+  }, []);
+
   // 학교 점수 정산 — 이기든 지든 판이 끝나면 영수증을 쓴다
   useEffect(() => {
     if (status === 'completed' || status === 'failed') void finishTicket(status === 'completed');
