@@ -13,6 +13,7 @@ import { soundManager } from '@/lib/audio/soundManager';
 import { music } from '@/lib/audio/music';
 import { hapticError, hapticHeavy, hapticLight, hapticSuccess } from '@/lib/utils/haptic';
 import { useUserStore } from '@/lib/store/userStore';
+import { getJuice, elementCenter } from '@/lib/juice';
 
 export const RUN_META: Record<RunKind, { emoji: string; label: string; how: string }> = {
   time: { emoji: '⏱️', label: '타임어택', how: '90초 · 판을 끝내면 +12초 · 틀리면 −5초' },
@@ -57,6 +58,10 @@ export default function RunGame({ kind }: { kind: RunKind }) {
     soundManager.setEnabled(sfxOn);
     soundManager.play(name, rate);
   }, [sfxOn]);
+
+  // 반응 키트 HUD 펀치 타깃 — 모드마다 점수·라운드 표시가 다른 요소라 셀렉터도 다르다
+  const punchGood = kind === 'time' ? '[data-run-score]' : '[data-run-round]';
+  const punchBad = kind === 'time' ? '[data-run-clock]' : '[data-run-hearts]';
 
   const firstEmpty = (s: RunState, from = 0) => {
     const total = s.grid.length;
@@ -154,14 +159,13 @@ export default function RunGame({ kind }: { kind: RunKind }) {
     if (r === 'wrong' || r === 'over') {
       setFlash({ cell: sel, kind: 'wrong', key: k });
       setComboN(0);
-      sfx('wrong');
+      getJuice()?.fire('wrong', { sfx: 'wrong', ...elementCenter(`[data-cell="${sel}"]`), punch: punchBad });
       hapticError();
       if (kind === 'time') setFloat({ text: '−5초', key: k, tone: 'bad' });
       if (r === 'over') end();
     } else if (r === 'cleared') {
       setComboN(comboRef.current + 1);
-      sfx('complete');
-      hapticSuccess();
+      getJuice()?.fire('puzzleComplete', { sfx: 'complete', title: kind === 'time' ? '클리어!' : `${s.cleared}라운드 통과!`, vib: [10, 50, 20] });
       setFloat({ text: kind === 'time' ? `+12초 · +${n === 4 ? 10 : 30}점` : `${s.cleared}라운드 통과!`, key: k, tone: 'good' });
       clearingRef.current = true;
       setClearing({ ...before, from: sel, key: k });
@@ -176,8 +180,8 @@ export default function RunGame({ kind }: { kind: RunKind }) {
       const c = comboRef.current + 1;
       setComboN(c);
       setFlash({ cell: sel, kind: 'ok', key: k });
-      // 연속 정답마다 반음씩 — 12연속에서 한 옥타브 끝
-      sfx('place', Math.pow(2, Math.min(c - 1, 12) / 12));
+      // 연속 정답마다 반음씩(J 내부 콤보 갈래가 맡는다 — 3·5·10 연속에선 추가 배너도)
+      getJuice()?.fire('correct', { sfx: 'place', ...elementCenter(`[data-cell="${sel}"]`), punch: punchGood });
       hapticLight();
       // 이 칸으로 줄·상자·대각선이 다 찼으면 그 칸들에 빛 물결
       const g = geometry({ n, diag: s.spec.diag });
@@ -190,14 +194,14 @@ export default function RunGame({ kind }: { kind: RunKind }) {
           delay.set(i, Math.min(delay.get(i) ?? 99, d));
         }
         setWave({ delay, key: k });
-        sfx('correct', 1 + done.length * 0.08);
+        getJuice()?.fire('unitComplete', { sfx: 'correct', ...elementCenter(`[data-cell="${sel}"]`), text: '완성!' });
         hapticSuccess();
       }
       const next = firstEmpty(s, sel + 1);
       if (next >= 0) setSel(next);
     }
     bump();
-  }, [phase, sel, kind, sfx, end, bump]);
+  }, [phase, sel, kind, end, bump, punchGood, punchBad]);
 
   // 키보드(PC): 숫자 · 방향키 · 지우기
   useEffect(() => {

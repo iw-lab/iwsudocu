@@ -51,3 +51,8 @@ export function hapticHeavy(): void {
 export function setHapticEnabled(on: boolean): void {
   enabled = on;
 }
+
+/** Current on/off state, for other modules (juice kit) that gate their own navigator.vibrate calls on it. */
+export function isHapticEnabled(): boolean {
+  return enabled;
+}

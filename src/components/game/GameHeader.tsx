@@ -54,7 +54,7 @@ export default function GameHeader() {
       >
         <span
           className={cn(
-            'font-mono text-lg font-semibold tabular-nums',
+            'gbj-timer font-mono text-lg font-semibold tabular-nums',
             isPaused ? 'blur-sm text-white/40' : 'text-white/90',
           )}
         >
@@ -68,8 +68,8 @@ export default function GameHeader() {
         animate={{ opacity: 1, x: 0 }}
         className="flex items-center gap-3"
       >
-        {/* Hearts */}
-        <div className="flex items-center gap-0.5">
+        {/* Hearts — J.punch 타깃(gbj-hearts, 반응 키트가 틀리면·특수행동마다 여길 튕긴다) */}
+        <div className="gbj-hearts flex items-center gap-0.5">
           {Array.from({ length: maxMistakes }).map((_, i) => (
             <Heart
               key={i}

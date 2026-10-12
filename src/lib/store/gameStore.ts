@@ -26,6 +26,7 @@ import { soundManager } from '@/lib/audio/soundManager';
 import { DIFFICULTY_CONFIGS } from '@/lib/utils/constants';
 import { hapticLight, hapticMedium, hapticSuccess, hapticError, hapticHeavy } from '@/lib/utils/haptic';
 import { checkCompletions } from '@/lib/game/celebrations';
+import { getJuice, elementCenter } from '@/lib/juice';
 import toast from 'react-hot-toast';
 
 // ---------------------------------------------------------------------------
@@ -481,13 +482,14 @@ export const useGameStore = create<GameStore>()(
       }
       const newMaxCombo = Math.max(maxCombo, newCombo.current);
 
-      // Play combo sound
+      // 반응 키트 — 소리 1번만(기존 soundManager.play 를 J.fire 의 sfx 갈래로 옮김) + 튀는 숫자·HUD 펀치·자체 콤보 과장(연속마다 음 상승·3/5/10 에서 추가 배너)
       const tier = getComboTier(newCombo.current);
-      if (tier.sound) {
-        soundManager.play(tier.sound as Parameters<typeof soundManager.play>[0]);
-      } else {
-        soundManager.play('correct');
-      }
+      getJuice()?.fire('correct', {
+        sfx: tier.sound || 'correct',
+        ...elementCenter(`[data-row="${row}"][data-col="${col}"]`),
+        text: `+${num}`,
+        punch: '.gbj-timer',
+      });
 
       hapticMedium();
       hapticSuccess();
@@ -516,9 +518,18 @@ export const useGameStore = create<GameStore>()(
           toast('박스 완성!', { icon: '🎉' });
         }
       }
-      // Play a special sound for completions
+      // 줄/칸/숫자 완성 — «큰 성공» 취급(펑+배너+화면 번쩍). 기존 soundManager.play 를 J.fire 의 sfx 갈래로 옮김(중복 재생 방지)
       if (completions.length > 0) {
-        soundManager.play('dailyComplete');
+        const big = completions.find((c) => c.type === 'number')
+          ? '숫자 완성!'
+          : completions.find((c) => c.type === 'box')
+            ? '박스 완성!'
+            : completions.length > 1
+              ? `${completions.length}개 완성!`
+              : completions[0].type === 'row'
+                ? `${completions[0].index + 1}행 완성!`
+                : `${completions[0].index + 1}열 완성!`;
+        getJuice()?.fire('unitComplete', { sfx: 'dailyComplete', text: big });
       }
 
       // Check if game is complete
@@ -528,7 +539,11 @@ export const useGameStore = create<GameStore>()(
       const newMistakes = mistakes + 1;
       const newCombo = resetCombo();
 
-      soundManager.play('wrong');
+      getJuice()?.fire('wrong', {
+        sfx: 'wrong',
+        ...elementCenter(`[data-row="${row}"][data-col="${col}"]`),
+        punch: '.gbj-hearts',
+      });
       hapticMedium();
       hapticError();
       if (combo.current > 0) {
@@ -794,7 +809,7 @@ export const useGameStore = create<GameStore>()(
     // Hints reset combo
     const newCombo = resetCombo();
 
-    soundManager.play('hint');
+    getJuice()?.fire('powerup', { sfx: 'hint', ...elementCenter(`[data-row="${row}"][data-col="${col}"]`), punch: '.gbj-hearts' });
     if (combo.current > 0) {
       soundManager.play('comboBreak');
     }
@@ -866,8 +881,8 @@ export const useGameStore = create<GameStore>()(
     const complete = isBoardComplete(currentBoard, puzzle.solution);
 
     if (complete) {
-      soundManager.play('complete');
-      hapticHeavy();
+      // 판 전체 완성 — 가장 큰 순간(배너+화면 번쩍+진동). hapticHeavy 와 같은 패턴을 vib 로 넘겨 중복 진동을 막는다.
+      getJuice()?.fire('puzzleComplete', { sfx: 'complete', title: '퍼즐 완료!', vib: [10, 30, 10, 30, 50] });
 
       // Freeze final elapsed time from the monotonic clock before scoring.
       const finalElapsed = Math.max(0, Math.floor(computeElapsedMs(get()) / 1000));
@@ -957,7 +972,7 @@ export const useGameStore = create<GameStore>()(
     newNotes[target.row][target.col].clear();
     newNotes = removeNoteFromPeers(newNotes, target.row, target.col, value);
 
-    soundManager.play('hint');
+    getJuice()?.fire('powerup', { sfx: 'hint', ...elementCenter(`[data-row="${target.row}"][data-col="${target.col}"]`), punch: '.gbj-hearts' });
     hapticSuccess();
     toast('셀이 공개되었습니다!', { icon: '🔍' });
 
@@ -986,7 +1001,7 @@ export const useGameStore = create<GameStore>()(
       }
     }
 
-    soundManager.play('hint');
+    getJuice()?.fire('powerup', { sfx: 'hint', punch: '.gbj-hearts' });
     hapticMedium();
 
     if (errors.length === 0) {
@@ -1005,7 +1020,7 @@ export const useGameStore = create<GameStore>()(
     const { status, accumulatedMs, runStartPerf, frozenUntilPerf } = get();
     if (status !== 'playing') return;
 
-    soundManager.play('powerup');
+    getJuice()?.fire('powerup', { sfx: 'powerup', punch: '.gbj-timer' });
     hapticSuccess();
     toast('30초 동안 타이머가 정지됩니다!', { icon: '❄️' });
 
@@ -1023,7 +1038,7 @@ export const useGameStore = create<GameStore>()(
     const { status } = get();
     if (status !== 'playing') return;
 
-    soundManager.play('powerup');
+    getJuice()?.fire('powerup', { sfx: 'powerup', punch: '.gbj-timer' });
     hapticSuccess();
     toast('60초 동안 콤보 배율 2배!', { icon: '🚀' });
 
@@ -1034,7 +1049,7 @@ export const useGameStore = create<GameStore>()(
     const { mistakes, status } = get();
     if (status !== 'playing' || mistakes <= 0) return;
 
-    soundManager.play('powerup');
+    getJuice()?.fire('powerup', { sfx: 'powerup', punch: '.gbj-hearts' });
     hapticSuccess();
     toast('실수 1회가 취소되었습니다!', { icon: '⏪' });
 
@@ -1044,7 +1059,7 @@ export const useGameStore = create<GameStore>()(
   grantHints: (amount: number) => {
     const { status, maxHints } = get();
     if (status !== 'playing' || amount <= 0) return;
-    soundManager.play('powerup');
+    getJuice()?.fire('powerup', { sfx: 'powerup', punch: '.gbj-hearts' });
     hapticSuccess();
     toast(`힌트 ${amount}회가 추가되었습니다!`, { icon: '💡' });
     set({ maxHints: maxHints + amount });
@@ -1055,7 +1070,7 @@ export const useGameStore = create<GameStore>()(
     // handled by the caller; this only restores the playable state.
     const { status } = get();
     if (status !== 'failed') return;
-    soundManager.play('powerup');
+    getJuice()?.fire('powerup', { sfx: 'powerup', title: '부활!', punch: '.gbj-hearts' });
     hapticSuccess();
     // Commit elapsed time accrued up to the game-over point before restarting
     // the active segment, so revive doesn't reset the timer to zero.

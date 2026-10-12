@@ -66,6 +66,8 @@ const SudokuCell = memo(function SudokuCell({
     <button
       type="button"
       onClick={handleClick}
+      data-row={row}
+      data-col={col}
       className={cn(
         'relative flex items-center justify-center aspect-square w-full active:scale-95 [perspective:300px]',
         'transition-colors duration-150 outline-none',

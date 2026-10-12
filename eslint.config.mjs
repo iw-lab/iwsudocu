@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     "src/gb/**",
     "hub/**",
     ".wrangler/**",
+    // 반응(주스) 키트 원본 그대로 복사(게이트 = check-juice.mjs) — @ts-nocheck 1줄만 허용(브리프 명시), 그 외 린트 대상 아님.
+    "src/lib/juice-kit.js",
   ]),
 ]);
 
