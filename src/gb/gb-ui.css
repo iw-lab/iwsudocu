@@ -129,3 +129,9 @@
 @media (max-width: 350px) {
   .gb-mode-desc { display: none; }
 }
+
+/* 분수 = 위아래로 쌓기(kit/frac/frac.css 와 같은 규칙) — 여기 두는 이유: CSP style-src 'self' 게임은 frac.js 의 인라인 <style> 주입이 막힌다 */
+.frac{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.05;margin:0 .12em;font-size:.9em;font-variant-numeric:tabular-nums}
+.frac-n{padding:0 .18em .06em;border-bottom:.09em solid currentColor}.frac-d{padding:.06em .18em 0}.frac-mixed{white-space:nowrap}.frac-mixed>.frac{margin-left:.06em}
+/* 보기가 홀수(수학 = 3개)면 마지막 보기를 한 줄 전체로 — 2열 격자에 빈칸이 남아 «하나 빠진» 것처럼 보였다(티샷 사용자 화면) */
+#gb-layer .gb-choices > .gb-choice:last-child:nth-child(odd){grid-column:1/-1}

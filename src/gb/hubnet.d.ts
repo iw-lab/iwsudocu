@@ -1,5 +1,5 @@
 export interface HubSchool { code: string; name: string; sido: string; region?: string }
-export interface HubState { online: boolean | null; checkedAt: number; tix: number; school: HubSchool | null; todayPts: number; cap: number; pass: number; q: number; per: number }
+export interface HubState { online: boolean | null; checkedAt: number; free: boolean; tix: number; school: HubSchool | null; todayPts: number; cap: number; pass: number; q: number; per: number }
 export const hubState: HubState;
 export function configureHub(o: { key?: string; base?: string; timeoutMs?: number; offline?: boolean }): void;
 export function hubKey(suffix: string): string;

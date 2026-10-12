@@ -1,4 +1,4 @@
-export function configureSchool(o: { playWord?: string; sfx?: { tick?: () => void; win?: () => void } | null }): void;
+export function configureSchool(o: { freePlay?: boolean; playWord?: string; sfx?: { tick?: () => void; win?: () => void } | null }): void;
 export function mountSchoolRank(el: HTMLElement): void;
 export function refreshSchoolRank(): Promise<void>;
 export function openSchool(then?: (() => void) | null): void;

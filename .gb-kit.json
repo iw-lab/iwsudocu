@@ -1,7 +1,8 @@
 {
   "kit": "school-hub",
-  "version": "1.0.0 (2026-10-11)",
+  "version": "1.1.0 (2026-10-12)",
   "id": "kanchaeum",
   "host": "pages",
-  "client": "src/gb"
+  "client": "src/gb",
+  "freePlay": false
 }

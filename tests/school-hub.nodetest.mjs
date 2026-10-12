@@ -6,9 +6,9 @@ import { T, didHash } from '../hub/shared/school.js';
 
 const DID = 'a'.repeat(32), DID2 = 'b'.repeat(32), IPH = 'e'.repeat(16);
 const SCHOOL = { code: '7010000', name: '서울한빛초등학교', sido: 'B10' };
-async function mk() {
+async function mk({ free = false } = {}) {
   let now = Date.UTC(2026, 9, 10, 3, 0, 0);
-  const hub = new Hub({ db: await sqliteD1(), secret: 'test-key', now: () => now });
+  const hub = new Hub({ db: await sqliteD1(), secret: 'test-key', now: () => now, free });
   const dh = await didHash(DID), dh2 = await didHash(DID2);
   const call = async (p, b) => (await hub.handle(p, b)).body;
   const tick = (ms) => { now += ms; };
@@ -106,4 +106,21 @@ test('HB-6 경합 — 환불된 표에 결과 0 · 결과 낸 표 환불 0 · �
   // 남의 dh 로 scored 를 직접 넣어도 트리거가 막는다
   await call('/spend', { dh, ref: 'ref:race3:01' }).catch(() => {});
   await assert.rejects(hub.db.batch([hub.db.prepare("INSERT INTO scored (ref, dh, n, at) VALUES ('ref:race3:01', 'ffffffffffffffff', 2, 1)")]), /ticket/);
+});
+
+test('HB-7 FREE_PLAY — 이용권 0장이어도 판 영수증이 나오고 학교 점수 정산 · 같은 ref 멱등 · 끄면(기본) 그대로 거절', async () => {
+  const off = await mk();
+  assert.equal((await off.call('/me', { dh: off.dh })).free, false);
+  assert.equal((await off.call('/spend', { dh: off.dh, ref: 'r'.repeat(20), kind: 'level' })).ok, false, '기본 허브 = 0장이면 거절');
+  const { dh, call, tick } = await mk({ free: true });
+  const me = await call('/me', { dh });
+  assert.equal(me.free, true); assert.equal(me.tix, 0);
+  await call('/select', { dh, school: SCHOOL });
+  const ref = 'f'.repeat(20);
+  assert.equal((await call('/spend', { dh, ref, kind: 'level' })).ok, true, 'FREE_PLAY = 0장이어도 판 시작');
+  assert.equal((await call('/spend', { dh, ref, kind: 'level' })).ok, true, '같은 ref 재전송 멱등');
+  assert.equal((await call('/me', { dh })).tix, 0, '차감 전후 이용권 0장 그대로(넣고 바로 씀)');
+  tick(60_000);
+  const r = await call('/result', { dh, ref, won: true, iph: IPH });
+  assert.equal(r.added, 2, '판 끝 학교 점수 정산: ' + JSON.stringify(r));
 });

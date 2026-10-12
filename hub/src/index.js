@@ -8,7 +8,7 @@ import { cleanQuery, isCode, isSido, isDid, searchUrl, codeUrl, parseNeis, ymdKs
 
 const J = (body, status = 200, cacheSec = 0) => new Response(JSON.stringify(body), { status, headers: {
   'content-type': 'application/json; charset=utf-8', 'cache-control': cacheSec ? `public, max-age=${cacheSec}` : 'no-store' } });
-const hubOf = (env) => new Hub({ db: env.DB, secret: env.QUIZ_KEY });
+const hubOf = (env) => new Hub({ db: env.DB, secret: env.QUIZ_KEY, free: env.FREE_PLAY === '1' });
 const POSTS = new Set(['/me', '/select', '/pack', '/grade', '/spend', '/refund', '/result']);
 
 async function neis(url, ctx) {   // NEIS 조회 — 엣지 캐시 7일(학교 목록은 거의 안 바뀐다). 장애면 null(캐시하지 않는다)

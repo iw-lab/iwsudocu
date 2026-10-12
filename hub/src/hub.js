@@ -46,7 +46,10 @@ const dup = (e) => /UNIQUE|PRIMARY|constraint/i.test(String(e?.message || e));
 
 export class Hub {
   // db: D1Database 모양({ prepare, batch }) · secret: 봉인 키 원문(wrangler secret QUIZ_KEY) · now: 시계(시험용)
-  constructor({ db, secret, now = () => Date.now() }) {
+  // free = FREE_PLAY 게임(판 자체가 문제 풀이 — 구구성 수호대 2026-10-12): 판 영수증(ref)은 그대로 내되 이용권은 안 깎는다.
+  //   차감 트리거를 건드리지 않으려고 «같은 batch 안에서 1장 넣고 바로 1장 쓴다» — 학교 점수 정산·하루 상한·환불 창은 그대로 걸린다.
+  constructor({ db, secret, now = () => Date.now(), free = false }) {
+    this.free = !!free;
     if (!secret) throw new Error('QUIZ_KEY 없음 — 봉인 키 없이 묶음을 내면 워커가 바뀔 때마다 채점이 410 이 된다');
     Object.assign(this, { db, now }); this.keyP = packKey(secret); this.ready = null;
   }
@@ -66,13 +69,13 @@ export class Hub {
     if (path === '/me') {
       await this.ensure(dh).run();
       const d = await this.dev(dh), used = d.pts_day === day ? d.pts | 0 : 0;
-      return json({ school: this.schoolOfRow(d), tix: d.tix | 0, correct: d.correct | 0, pass: T.TICKET_PASS_Q, q: T.PACK_Q, per: T.TIX_PER_PACK, todayPts: used, cap: T.SCHOOL_DAY_CAP });
+      return json({ school: this.schoolOfRow(d), free: this.free, tix: d.tix | 0, correct: d.correct | 0, pass: T.TICKET_PASS_Q, q: T.PACK_Q, per: T.TIX_PER_PACK, todayPts: used, cap: T.SCHOOL_DAY_CAP });
     }
     if (path === '/spend') {
       const ref = String(body.ref || ''); if (!isRef(ref)) return json({ error: 'ref' }, 400);
       const kind = /^[a-z]{1,12}$/.test(String(body.kind || '')) ? String(body.kind) : 'play';   // 기록용(점수엔 안 쓴다)
       try {
-        await this.db.batch([this.ensure(dh), this.db.prepare("INSERT INTO spent (ref, dh, kind, state, at) VALUES (?, ?, ?, 'spent', ?)").bind(ref, dh, kind, t)]);
+        await this.db.batch([this.ensure(dh), ...(this.free ? [this.db.prepare('UPDATE dev SET tix = tix + 1 WHERE dh = ?').bind(dh)] : []), this.db.prepare("INSERT INTO spent (ref, dh, kind, state, at) VALUES (?, ?, ?, 'spent', ?)").bind(ref, dh, kind, t)]);
       } catch (e) {
         if (/ticket/.test(String(e?.message || e))) return json({ ok: false, why: 'ticket', tix: 0 });
         if (dup(e)) {   // 같은 ref — 이미 냈으면 ok(멱등), 돌려받은 ref 는 다시 못 쓴다

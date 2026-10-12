@@ -10,6 +10,9 @@
 import { hubState, hubLoad, hubSave, refreshMe, searchSchool, selectSchool, topSchools, newPack, gradePack,
   newRef, spendTicket, refundTicket, reportResult, onHub, hubKey } from './hubnet.js';
 import { autoEnterFullscreen } from './gb-fullscreen.js';
+// 🔴 분수는 위아래로 쌓아 그린다 — 문항은 허브 «서버»가 만들어 보내서 게임 쪽 분수 게이트가 못 봤다(2026-10-12 티샷 사용자 제보 «2/3 + 2/4»).
+//    gb-frac.js = kit/frac/frac.js 사본(install.sh 가 복사 — 정본은 하나)
+import { fracHTML } from './gb-frac.js';
 
 const SIDO = { B10: '서울', C10: '부산', D10: '대구', E10: '인천', F10: '광주', G10: '대전', H10: '울산', I10: '세종', J10: '경기',
   K10: '강원', M10: '충북', N10: '충남', P10: '전북', Q10: '전남', R10: '경북', S10: '경남', T10: '제주' };
@@ -20,6 +23,9 @@ const MEDAL = ['🥇', '🥈', '🥉'];
 const opt = { playWord: '게임', sfx: null };
 /** 게임마다 한 번: playWord = «판»/«곡»/«경기» 등 안내 문구에 들어갈 낱말, sfx = { tick(), win() } (선택) */
 export function configureSchool(o) { Object.assign(opt, o || {}); }
+// FREE_PLAY 게임 — 게임이 선언(configureSchool({ freePlay: true }))하거나 허브가 알려 주면(/me free) 이용권 화면·표시를 안 쓴다.
+//   선언이 먼저다: 허브가 안 닿는 순간에도 «문제 풀고 이용권» 단추가 떠 있으면 안 된다.
+const free = () => !!(opt.freePlay || hubState.free);
 
 /* ── 공용 층 ─────────────────────────────────────────────── */
 let layer = null;
@@ -77,9 +83,9 @@ function paintRank() {
     : mine ? `<span class="gb-mine">${esc(shortSchool(hubState.school.name))} <b>${mine.rank}위</b>${mine.gap ? ` · 위 학교까지 ${mine.gap}점` : ' · 1등!'}</span>`
       : `<span class="gb-mine">${esc(shortSchool(hubState.school.name))} — 첫 점수를 올려요!</span>`;
   rankEl.innerHTML = `
-    <div class="gb-rank-head"><b>🏆 학교 순위</b><small>${period}</small><span class="gb-tix" title="이용권">🎟 ${hubState.online === false ? '–' : hubState.tix}</span></div>
+    <div class="gb-rank-head"><b>🏆 학교 순위</b><small>${period}</small>${free() ? '' : `<span class="gb-tix" title="이용권">🎟 ${hubState.online === false ? '–' : hubState.tix}</span>`}</div>
     <ol class="gb-rank-list">${body}</ol>
-    <div class="gb-rank-foot">${me}<button class="gb-link" data-gb-act="quiz">🎟 문제 풀고 이용권</button></div>`;
+    <div class="gb-rank-foot">${me}${free() ? '' : '<button class="gb-link" data-gb-act="quiz">🎟 문제 풀고 이용권</button>'}</div>`;
   rankEl.querySelector('[data-gb-act="school"]')?.addEventListener('click', () => openSchool(() => { hide(); refreshSchoolRank(); }));
   rankEl.querySelector('[data-gb-act="quiz"]')?.addEventListener('click', () => openQuiz(null));
 }
@@ -155,8 +161,8 @@ function renderQuiz() {
   const q = qz.pack && qz.pack.qs[qz.i];
   const body = qz.review ? `<div class="gb-review">${qz.review}</div>`
     : q ? `<div class="gb-qprog">${qz.pack.qs.map((_, k) => `<i class="${k < qz.i ? 'done' : k === qz.i ? 'now' : ''}"></i>`).join('')}</div>
-           <p class="gb-qtext">${esc(q.text)}</p>
-           <div class="gb-choices">${q.choices.map((c, k) => `<button class="gb-choice" data-pick="${k}">${esc(c)}</button>`).join('')}</div>`
+           <p class="gb-qtext">${fracHTML(q.text)}</p>
+           <div class="gb-choices">${q.choices.map((c, k) => `<button class="gb-choice" data-pick="${k}">${fracHTML(c)}</button>`).join('')}</div>`
       : '';
   const goLabel = qz.passed ? (quizThen ? `▶ ${opt.playWord} 시작` : '한 묶음 더 풀기') : qz.pack ? '처음부터 다시' : qz.review ? '다시 도전' : '문제 시작';
   show(`
@@ -196,7 +202,7 @@ async function submitPack() {
     if (j.tooFast) { await new Promise((r) => setTimeout(r, Math.min(8000, j.waitMs + 200))); j = await gradePack(pack.pid, qz.answers); }
     if (gen !== qGen) return;
     if (j.error) throw new Error(j.error);
-    qz.review = pack.qs.map((q, k) => `<div class="${j.right[k] ? 'ok' : 'no'}">${j.right[k] ? '⭕' : '❌'} ${esc(q.text.replace('= ?', '').replace('→ ?', '→'))} <b>${esc(q.choices[j.answers[k]])}</b></div>`).join('');
+    qz.review = pack.qs.map((q, k) => `<div class="${j.right[k] ? 'ok' : 'no'}">${j.right[k] ? '⭕' : '❌'} ${fracHTML(q.text.replace('= ?', '').replace('→ ?', '→'))} <b>${fracHTML(q.choices[j.answers[k]])}</b></div>`).join('');
     if (j.ticket) { qz.passed = true; qz.msg = `🎉 ${j.correct}/${j.total} 정답! <b>이용권 +${j.ticket}</b> (지금 ${j.tix}장)`; opt.sfx?.win?.(); }
     else { qz.passed = false; qz.msg = `${j.correct}/${j.total} — <b>${j.pass}개</b> 이상 맞히면 이용권! 다시 도전해요`; }
   } catch {
@@ -241,11 +247,12 @@ async function gateOnce(go, kind) {
   if (!hubState.school && !hubLoad().noSchool) { openSchool(() => gbGate(go, { kind })); return; }
   // 문제 화면의 «그냥 하기»(free=true)면 이번 판만 점수 없이 바로 시작
   const retry = (free) => (free ? go(null) : gbGate(go, { kind }));
-  if (hubState.tix <= 0) { openQuiz(retry, `🎟 이용권이 없어요 — 문제를 풀면 바로 ${opt.playWord}할 수 있어요!`); return; }
+  // FREE_PLAY 허브면 이용권 화면을 건너뛴다(서버가 판마다 1장 넣고 바로 쓴다)
+  if (hubState.tix <= 0 && !free()) { openQuiz(retry, `🎟 이용권이 없어요 — 문제를 풀면 바로 ${opt.playWord}할 수 있어요!`); return; }
   const ref = newRef(kind);
   const r = await spendTicket(ref, kind);
   if (r.ok) { liveRef = { ref, at: Date.now() }; go(ref); return; }
-  if (r.why === 'ticket') { openQuiz(retry, '🎟 이용권이 없어요 — 문제를 풀면 바로 시작해요!'); return; }
+  if (r.why === 'ticket' && !free()) { openQuiz(retry, '🎟 이용권이 없어요 — 문제를 풀면 바로 시작해요!'); return; }
   // 🔴 순단 = 차감이 커밋됐는지 모른다 — ref 를 버리지 않고 넘긴다. 끝·이탈에서 같은 ref 로 result/refund(서버 멱등 · 안 깎였으면 조용히 거절)
   //    (교차검증 codex·grok: ref 를 버리면 «깎였는데 정산 길이 없는» 이용권이 생긴다)
   if (r.why === 'offline') { liveRef = { ref, at: Date.now() }; go(ref); return; }

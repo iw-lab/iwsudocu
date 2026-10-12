@@ -39,7 +39,7 @@ async function hubCall(path, body, method = 'POST') {
 }
 
 /** 상태 사본 — 화면 칩·관문이 읽는다. online: null(모름) · true · false */
-export const hubState = { online: null, checkedAt: 0, tix: 0, school: null, todayPts: 0, cap: 40, pass: 4, q: 5, per: 2 };
+export const hubState = { online: null, checkedAt: 0, free: false, tix: 0, school: null, todayPts: 0, cap: 40, pass: 4, q: 5, per: 2 };
 const hubSubs = new Set();
 const hubEmit = () => hubSubs.forEach((f) => { try { f(hubState); } catch { /* 화면 하나가 죽어도 나머지는 산다 */ } });
 export const onHub = (f) => { hubSubs.add(f); return () => hubSubs.delete(f); };
@@ -47,6 +47,7 @@ export const onHub = (f) => { hubSubs.add(f); return () => hubSubs.delete(f); };
 function applyMe(j) {
   hubState.online = true; hubState.checkedAt = Date.now();
   if (typeof j.tix === 'number') hubState.tix = j.tix;
+  if (typeof j.free === 'boolean') hubState.free = j.free;
   if ('school' in j) { hubState.school = j.school; hubSave({ schoolName: j.school?.name ?? '', schoolCode: j.school?.code ?? '' }); }
   for (const k of ['todayPts', 'cap', 'pass', 'q', 'per']) if (typeof j[k] === 'number') hubState[k] = j[k];
   hubEmit();
