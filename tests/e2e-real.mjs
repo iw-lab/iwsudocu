@@ -19,7 +19,7 @@ const page = await browser.newPage();
 await page.setViewport({ width: 390, height: 740, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
 const errors = [];
 page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
-page.on('console', (m) => { if (m.type() === 'error' && !/api\/hub|Failed to load resource/.test(m.text())) errors.push(`console: ${m.text()}`); });
+page.on('console', (m) => { if (process.env.KC_DBG) console.log('  [console]', m.type(), m.text().slice(0, 300)); if (m.type() === 'error' && !/api\/hub|Failed to load resource/.test(m.text())) errors.push(`console: ${m.text()}`); });
 const apiCalls = [];
 page.on('request', (r) => { if (r.url().includes('/api/leaderboard')) apiCalls.push(r.url()); });
 await page.evaluateOnNewDocument(() => { window.__fsCalls = 0; const o = Element.prototype.requestFullscreen; Element.prototype.requestFullscreen = function (...a) { window.__fsCalls++; return o ? o.apply(this, a).catch(() => {}) : Promise.resolve(); }; });
@@ -55,16 +55,25 @@ async function passGate() {
 }
 /** 판 화면 칸·숫자 단추를 진짜로 누른다(중심 elementFromPoint 가 그 요소인지 먼저 본다) */
 async function tapSel(sel) {
+  // 판을 끝내면 0.65초 물결(입력 없음) 뒤에 새 판이 깔린다 — 칸이 다시 생길 때까지 기다린다
+  await page.waitForSelector(sel, { timeout: 4000 }).catch(() => {});
   const h = await page.$(sel);
   if (!h) throw new Error(`없음: ${sel}`);
   const hit = await h.evaluate((el) => { const r = el.getBoundingClientRect(); const t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return t === el || el.contains(t); });
-  if (!hit) throw new Error(`가려짐: ${sel}`);
+  if (!hit) {
+    const why = await h.evaluate((el) => { const r = el.getBoundingClientRect(); const t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return { boards: document.querySelectorAll('[data-run-board]').length, cells: document.querySelectorAll('[data-cell]').length, rect: [r.left, r.top, r.width, r.height].map(Math.round), top: t ? `${t.tagName}.${t.className}`.slice(0, 120) : null, vw: innerWidth, vh: innerHeight, chain: [...document.querySelectorAll('[data-run-board]')].map((b) => { const a = []; for (let e = b; e && e !== document.body; e = e.parentElement) a.push(`${e.tagName}${e.dataset && Object.keys(e.dataset).length ? '[' + Object.keys(e.dataset).join(',') + ']' : ''}.${String(e.className).slice(0, 40)}`); return a.join(' < '); }), mains: document.querySelectorAll('main').length }; });
+    throw new Error(`가려짐: ${sel} ${JSON.stringify(why)} errors=${JSON.stringify(errors)}`);
+  }
   await h.tap();
 }
 const run = () => page.evaluate(() => { const s = window.__kcRun; return s && { n: s.spec.n, diag: s.spec.diag, grid: s.grid.slice(), sol: s.board.solution.slice(), cleared: s.cleared, score: s.score, hearts: s.hearts, t: s.timeLeftMs, over: s.over }; });
 async function solveBoard() {
   const s0 = await run();
   const before = s0.cleared;
+  // 판을 넘길 때 이전 판 DOM 이 남으면(형제 key 충돌) 판이 두 개 겹쳐 보인다
+  await page.waitForSelector('[data-cell]', { timeout: 4000 }).catch(() => {});
+  const boards = await page.evaluate(() => document.querySelectorAll('[data-run-board]').length);
+  if (boards !== 1) throw new Error(`판 DOM ${boards}개 — 1개여야 한다`);
   for (let guard = 0; guard < 100; guard++) {
     const s = await run();
     if (s.cleared > before || s.over) return;
@@ -107,7 +116,7 @@ try {
   const seed1 = await page.evaluate(() => window.__kcRun && window.__kcRun.seed);
   ok(seed0 === seed1, `판이 저절로 다시 시작되지 않는다 (${seed0} → ${seed1})`);
   let s = await run();
-  ok(s.n === 4 && Math.abs(s.t - 90000) < 3000, `D4 첫 판 4×4 · 90초 (${s.n}, ${s.t})`);
+  ok(s.n === 4 && s.t <= 90000 && s.t > 80000, `D4 첫 판 4×4 · 90초 (${s.n}, ${s.t})`);
   await wrongOnce();
   await sleep(200);
   const s1 = await run();
@@ -119,10 +128,14 @@ try {
   ok(s.cleared === 3 && s.score === 30 && s.n === 6, `D4 4×4 세 판 → 30점·6×6 (${s.cleared}, ${s.score}, ${s.n})`);
   await shot('03-time-6x6');
   await sleep(500);
+  await sleep(1500);
+  const mus = await page.evaluate(() => window.__kcMusic && window.__kcMusic());
+  ok(mus && mus.unlocked && mus.ctx === 'running' && mus.want === 'rush' && mus.playing.includes('rush') && !mus.playing.includes('calm'), `배경음악: 타임어택 = 빠른 곡 한 곡만 ${JSON.stringify(mus)}`);
   const sfx = await page.evaluate(() => window.__kcSfx && window.__kcSfx());
   ok(sfx && sfx.files >= 10 && sfx.state === 'running', `D13 효과음 파일 ${sfx && sfx.files}개 · 오디오 ${sfx && sfx.state}`);
   while (!(await run()).over) await wrongOnce();
   await page.waitForSelector('[data-run-result]', { timeout: 5000 });
+  await sleep(450);
   await shot('04-time-result');
   ok(true, 'D4 0초 → 결과 화면');
 
@@ -139,6 +152,7 @@ try {
   await shot('06-survival-6x6');
   for (let k = 0; k < 3; k++) await wrongOnce();
   await page.waitForSelector('[data-run-result]', { timeout: 5000 });
+  await sleep(450);
   await shot('07-survival-result');
   ok((await run()).over, 'D5 실수 3번 → 결과 화면');
 

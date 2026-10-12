@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useUserStore } from '@/lib/store/userStore';
 import { soundManager } from '@/lib/audio/soundManager';
+import { music } from '@/lib/audio/music';
 
 /**
  * Mirrors accessibility preferences onto the document root so plain CSS can
@@ -13,6 +14,14 @@ export function AccessibilitySync() {
   const largeText = useUserStore((s) => s.profile.settings.largeText);
 
   const soundEnabled = useUserStore((s) => s.profile.settings.soundEnabled);
+  const musicEnabled = useUserStore((s) => s.profile.settings.musicEnabled);
+
+  // 배경음악: 설정 반영 + 첫 입력에서 시작(모든 화면 공통)
+  useEffect(() => {
+    music.bind();
+    music.setEnabled(musicEnabled);
+    (window as unknown as { __kcMusic?: () => unknown }).__kcMusic = () => music.status();
+  }, [musicEnabled]);
 
   useEffect(() => {
     document.documentElement.dataset.largeText = largeText ? 'true' : 'false';

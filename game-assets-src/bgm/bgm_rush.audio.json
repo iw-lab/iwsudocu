@@ -1,0 +1,30 @@
+{
+  "verdict": "PASS",
+  "fails": [],
+  "warnings": [
+    "곡이 잦아들지 않는다 — 페이드 직전 5초 -17.35dB 가 본문 -16.48dB 대비 -0.9dB (기대: -1.0dB 이하). 가사 끝에 [Outro] 섹션이 있는지 확인할 것 — 페이드는 이걸 대신하지 못한다"
+  ],
+  "duration_s": 30.5,
+  "sample_rate": 192000,
+  "channels": 2,
+  "mean_db": -16.0,
+  "peak_db": -1.0,
+  "lufs": -14.4,
+  "audio": "/Users/sim-insu/Documents/dev/iwsudocu/game-assets-src/bgm/bgm_rush.loop.wav",
+  "unmeasured": [],
+  "end_burst": {
+    "detected": false,
+    "tail_floor_db": -12.9,
+    "peak_db": -6.6,
+    "threshold_db": 12.0,
+    "max_burst_ms": 80
+  },
+  "ending_resolution": {
+    "delta_db": -0.87,
+    "body_db": -16.48,
+    "tail_db": -17.35,
+    "required_drop_db": 1.0,
+    "fade_out_s": 0.0,
+    "exempt": false
+  }
+}

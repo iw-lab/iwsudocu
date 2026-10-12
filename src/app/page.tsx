@@ -15,9 +15,9 @@ import { getBest, bestLabel } from '@/lib/mini/records';
 import type { RunKind } from '@/lib/mini/run';
 
 const RUN_CARDS: { kind: RunKind; emoji: string; label: string; desc: string }[] = [
-  { kind: 'time', emoji: '⏱️', label: '타임어택', desc: '90초 · 끝내면 +12초' },
-  { kind: 'survival', emoji: '❤️', label: '서바이벌', desc: '하트 3개 · 점점 커져요' },
-  { kind: 'rule', emoji: '✖️', label: '대각선', desc: '대각선도 겹치면 안 돼요' },
+  { kind: 'time', emoji: '⏱️', label: '타임어택', desc: '90초 · 깨면 +12초' },
+  { kind: 'survival', emoji: '❤️', label: '서바이벌', desc: '하트 3개로 버티기' },
+  { kind: 'rule', emoji: '📐', label: '대각선', desc: '대각선도 겹치면 안 돼' },
 ];
 
 export default function HomePage() {
@@ -38,7 +38,7 @@ export default function HomePage() {
       if (!alive || !el) return;
       const cards = [
         ...RUN_CARDS.map((c) => ({ id: c.kind, kind: c.kind, emoji: c.emoji, label: c.label, desc: c.desc, best: bestLabel(c.kind, getBest(c.kind)?.value) })),
-        { id: 'daily', kind: 'daily' as const, emoji: '📅', label: '오늘의 퍼즐', desc: '하루 한 판 · 연속 도전', best: dailyDone ? '오늘 완료 ✓' : streak > 0 ? `연속 ${streak}일` : '' },
+        { id: 'daily', kind: 'daily' as const, emoji: '📅', label: '오늘의 퍼즐', desc: '하루 한 판 · 연속', best: dailyDone ? '오늘 완료 ✓' : streak > 0 ? `연속 ${streak}일` : '' },
       ];
       modes.renderModeCards(el, cards, (id) => {
         if (id === 'daily') {
@@ -58,7 +58,7 @@ export default function HomePage() {
   const play = () => startWithTicket('classic', () => router.push('/play'));
 
   return (
-    <div className="min-h-screen px-4 pb-28 pt-3 safe-top">
+    <div className="kc-home min-h-screen px-4 pb-28 pt-3 safe-top">
       <div className="gb-home">
         <div className="gb-home-top">
           <div className="gb-brand">
@@ -84,10 +84,10 @@ export default function HomePage() {
 
         <StreakRiskBanner />
 
+        {/* 보조 줄 — 하단 메뉴(기록·프로필)와 겹치지 않는 것만 */}
         <div className="gb-sub">
           <button type="button" onClick={() => router.push('/help')}>도움말</button>
           <button type="button" onClick={() => router.push('/print')}>인쇄</button>
-          <button type="button" onClick={() => router.push('/leaderboard')}>내 기록</button>
           <button type="button" onClick={() => router.push('/shop')}>상점</button>
         </div>
       </div>

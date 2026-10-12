@@ -1,0 +1,16 @@
+[
+  {
+    "file": "bgm_rush.loop.wav",
+    "caption": "upbeat playful puzzle game time attack loop, bright marimba, plucky synth, bouncy bass, energetic drums, ticking clock feel, seamless loop, no intro, no outro, no fade, instrumental, NO VOCALS",
+    "bytes": 23424102,
+    "license": "self-generated",
+    "source": "ACE-Step-1.5 via game-builder/tools/gen-bgm.sh"
+  },
+  {
+    "file": "bgm_calm.loop.wav",
+    "caption": "calm lofi puzzle game background loop, soft electric piano, gentle mallets, warm pads, light brush drums, focused and cozy, seamless loop, no intro, no outro, no fade, instrumental, NO VOCALS",
+    "bytes": 35712102,
+    "license": "self-generated",
+    "source": "ACE-Step-1.5 via game-builder/tools/gen-bgm.sh"
+  }
+]

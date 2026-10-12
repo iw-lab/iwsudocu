@@ -54,3 +54,6 @@ nul
 # 학교 허브 비밀(키트)
 .secrets/
 .wrangler/
+
+# BGM 원본 wav 는 크다(57MB) — ogg·생성 기록만 남긴다
+game-assets-src/bgm/*.wav

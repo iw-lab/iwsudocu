@@ -12,7 +12,7 @@ import type { RunKind } from '@/lib/mini/run';
 const RUN_ROWS: { kind: RunKind; emoji: string; label: string }[] = [
   { kind: 'time', emoji: '⏱️', label: '타임어택' },
   { kind: 'survival', emoji: '❤️', label: '서바이벌' },
-  { kind: 'rule', emoji: '✖️', label: '대각선' },
+  { kind: 'rule', emoji: '📐', label: '대각선' },
 ];
 
 // 자유 입력 닉네임 랭킹은 걷어냈다(아동 개인정보) — 여기는 학교 순위 + 내 기록만 보여 준다.

@@ -1,0 +1,20 @@
+{
+  "entries": [
+    {
+      "file": "bgm_calm.mp3",
+      "source": "self-generated (ACE-Step-1.5 via game-builder tools/gen-bgm.sh, 로컬 생성)",
+      "license": "CC0",
+      "author": "칸채움",
+      "url": "local:gen-bgm.sh",
+      "fetched": "2026-10-12"
+    },
+    {
+      "file": "bgm_rush.mp3",
+      "source": "self-generated (ACE-Step-1.5 via game-builder tools/gen-bgm.sh, 로컬 생성)",
+      "license": "CC0",
+      "author": "칸채움",
+      "url": "local:gen-bgm.sh",
+      "fetched": "2026-10-12"
+    }
+  ]
+}

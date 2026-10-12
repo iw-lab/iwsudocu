@@ -49,7 +49,7 @@ class SoundManager {
   }
 
   /** 파일로 울렸으면 true */
-  private playFile(sound: SoundName): boolean {
+  private playFile(sound: SoundName, rate = 1): boolean {
     const name = FILES[sound];
     const buf = name ? this.buffers.get(name) : undefined;
     if (!buf) return false;
@@ -59,6 +59,7 @@ class SoundManager {
       const g = ctx.createGain();
       g.gain.value = VOLUME[sound] ?? 0.7;
       src.buffer = buf;
+      src.playbackRate.value = rate;
       src.connect(g);
       g.connect(ctx.destination);
       src.start();
@@ -109,9 +110,10 @@ class SoundManager {
     frequencies.forEach(f => this.playTone(f, duration, _type, volume));
   }
 
-  play(sound: SoundName) {
+  /** rate = 재생 속도(음높이) — 연속 정답일수록 조금씩 올려 «차오르는» 느낌을 낸다 */
+  play(sound: SoundName, rate = 1) {
     if (!this.enabled) return;
-    if (this.playFile(sound)) return;
+    if (this.playFile(sound, rate)) return;
 
     switch (sound) {
       case 'tap':

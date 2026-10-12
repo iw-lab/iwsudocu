@@ -67,7 +67,7 @@ const SudokuCell = memo(function SudokuCell({
       type="button"
       onClick={handleClick}
       className={cn(
-        'relative flex items-center justify-center aspect-square w-full',
+        'relative flex items-center justify-center aspect-square w-full active:scale-95 [perspective:300px]',
         'transition-colors duration-150 outline-none',
         isErrorHighlight && 'animate-pulse',
         'focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400',
@@ -86,10 +86,11 @@ const SudokuCell = memo(function SudokuCell({
         {value !== 0 ? (
           <motion.span
             key={`val-${value}`}
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
+            // 손맛: 놓은 숫자는 카드처럼 뒤집히며 나타난다(주어진 칸은 처음부터 그대로)
+            initial={isGiven ? false : { rotateX: -90, scale: 0.8, opacity: 0 }}
+            animate={{ rotateX: 0, scale: 1, opacity: 1 }}
             exit={{ scale: 0.5, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+            transition={{ type: 'spring', stiffness: 520, damping: 22 }}
             className={cn(
               'sudoku-cell-value',
               'text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold select-none leading-none',

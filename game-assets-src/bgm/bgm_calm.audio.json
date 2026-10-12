@@ -1,0 +1,32 @@
+{
+  "verdict": "FAIL",
+  "fails": [
+    "끝단 버스트 -14.3dB — 꼬리 바닥 -26.3dB 보다 12dB 높다('삑' 아티팩트). scripts/polish.py 로 제거할 것"
+  ],
+  "warnings": [
+    "엔딩 마무리 -11.8dB — 다만 --fade-out-s 를 받지 못했다. 페이드를 넣은 파일이면 이 수치는 페이드 때문일 수 있다(3초 이상 페이드에서 판정이 뒤집힌다). 페이드 길이를 넘겨 다시 잴 것"
+  ],
+  "duration_s": 46.5,
+  "sample_rate": 192000,
+  "channels": 2,
+  "mean_db": -17.5,
+  "peak_db": -1.0,
+  "lufs": -16.2,
+  "audio": "/Users/sim-insu/Documents/dev/iwsudocu/game-assets-src/bgm/bgm_calm.loop.wav",
+  "unmeasured": [],
+  "end_burst": {
+    "detected": true,
+    "tail_floor_db": -26.3,
+    "peak_db": -14.3,
+    "threshold_db": 12.0,
+    "max_burst_ms": 80
+  },
+  "ending_resolution": {
+    "delta_db": -11.79,
+    "body_db": -16.63,
+    "tail_db": -28.41,
+    "required_drop_db": 1.0,
+    "fade_out_s": 0.0,
+    "exempt": false
+  }
+}

@@ -26,7 +26,7 @@ import {
 import { ALL_ACHIEVEMENTS, checkAchievements } from '@/lib/game/achievements';
 import { calculateBrainScore } from '@/lib/game/brainScore';
 import { soundManager } from '@/lib/audio/soundManager';
-import { bgmManager } from '@/lib/audio/bgmManager';
+import { music } from '@/lib/audio/music';
 import { setHapticEnabled } from '@/lib/utils/haptic';
 import { useGameStore } from '@/lib/store/gameStore';
 import type { Entitlement } from '@/lib/monetization/bridge';
@@ -103,7 +103,7 @@ const DEFAULT_STATS: UserStats = {
 
 const DEFAULT_SETTINGS: UserSettings = {
   soundEnabled: true,
-  musicEnabled: false,
+  musicEnabled: true,
   vibrationEnabled: true,
   autoRemoveNotes: true,
   highlightSameNumbers: true,
@@ -695,7 +695,7 @@ export const useUserStore = create<UserStore>()(
 
           // Sync music setting with BGM manager
           if (settings.musicEnabled !== undefined) {
-            bgmManager.setEnabled(settings.musicEnabled);
+            music.setEnabled(settings.musicEnabled);
           }
 
           // Sync vibration setting with haptic module
@@ -920,14 +920,16 @@ export const useUserStore = create<UserStore>()(
     }),
     {
       name: 'numero-quest-user',
-      version: 1,
+      version: 2,
       storage: createJSONStorage(() => localStorage),
       // Backfill fields added after a user's profile was first persisted so
       // older saves don't surface undefined → NaN downstream.
-      migrate: (persisted: unknown) => {
+      migrate: (persisted: unknown, version: number) => {
         const p = persisted as { profile?: Partial<UserProfile> } | undefined;
         if (!p || !p.profile) return { profile: createDefaultProfile() };
         const prof = p.profile;
+        // v2(2026-10-11): 배경음악이 합성음(기본 꺼짐)에서 파일 루프로 바뀌었다 — 고른 적 없이 꺼져 있던 기본값을 켠다
+        if (version < 2 && prof.settings) prof.settings = { ...prof.settings, musicEnabled: true };
         return {
           profile: {
             ...createDefaultProfile(),
@@ -958,7 +960,7 @@ export const useUserStore = create<UserStore>()(
       onRehydrateStorage: () => (state) => {
         if (state) {
           soundManager.setEnabled(state.profile.settings.soundEnabled);
-          bgmManager.setEnabled(state.profile.settings.musicEnabled);
+          music.setEnabled(state.profile.settings.musicEnabled);
           setHapticEnabled(state.profile.settings.vibrationEnabled);
         }
       },

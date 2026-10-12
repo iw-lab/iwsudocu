@@ -19,7 +19,6 @@ import { Header } from '@/components/layout/Header';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { XCircle, Home, RotateCcw, PlayCircle, PlusCircle } from 'lucide-react';
-import { bgmManager } from '@/lib/audio/bgmManager';
 import { DIFFICULTY_CONFIGS } from '@/lib/utils/constants';
 import { formatTime } from '@/lib/utils/format';
 import { kstToday } from '@/lib/game/daily';
@@ -104,22 +103,6 @@ export default function PlayPage() {
   // Hooks
   useTimer();
   useKeyboard();
-
-  // BGM: start when playing, stop when done or leaving
-  const musicEnabled = useUserStore((s) => s.profile.settings.musicEnabled);
-
-  useEffect(() => {
-    if (status === 'playing' && musicEnabled) {
-      bgmManager.setEnabled(true);
-      bgmManager.play();
-    } else if (status === 'completed' || status === 'failed' || status === 'idle') {
-      bgmManager.stop();
-    }
-
-    return () => {
-      bgmManager.stop();
-    };
-  }, [status, musicEnabled]);
 
   // Record local stats immediately on completion
   const resultRecorded = useRef(false);
