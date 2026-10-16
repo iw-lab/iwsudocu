@@ -1,6 +1,6 @@
 export type ModeKind = "classic" | "time" | "survival" | "rule" | "big" | "daily";
 export const MODE_KINDS: readonly ModeKind[];
-export interface GbMode { id: string; kind: ModeKind; emoji: string; label: string; desc: string; best?: string }
+export interface GbMode { id: string; kind: ModeKind; icon?: string; label: string; desc: string; best?: string }
 export function renderModeCards(container: HTMLElement, modes: GbMode[], onPick: (id: string) => void): void;
 export function setModeBest(container: HTMLElement, id: string, text: string): void;
 export class ModeClock {

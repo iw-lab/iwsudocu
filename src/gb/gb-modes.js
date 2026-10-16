@@ -1,3 +1,4 @@
+import { gbIcon } from './gb-icons.js';
 /* gb-modes.js — 게임 모드 기본틀(카드 · 상단 모드 띠 · 타이머 · 하트 · 최고 기록). 키트 정본 = ~/.claude/skills/game-builder/kit/school-hub/client
  * 2026-10-11 사용자 «다양한 게임모드 … 스킬 코드에 박아» — 종이하늘 v6 에서 검증한 모드 묶음을 장르 무관 틀로 옮겼다.
  *
@@ -15,14 +16,14 @@ export const MODE_KINDS = ['classic', 'time', 'survival', 'rule', 'big', 'daily'
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 /**
- * 모드 카드 격자. modes = [{ id, kind, emoji, label, desc, best? }] · onPick(id) 는 클릭(제스처) 안에서 불린다 → 거기서 gbGate.
+ * 모드 카드 격자. modes = [{ id, kind, icon, label, desc, best? }] · icon = 게임이 만든 SVG 문자열(이모지 금지 — check-no-emoji) · onPick(id) 는 클릭(제스처) 안에서 불린다 → 거기서 gbGate.
  * 다시 그릴 필요 없이 최고 기록만 바꿀 땐 setModeBest(container, id, text).
  */
 export function renderModeCards(container, modes, onPick) {
   container.classList.add('gb-modes');
   container.innerHTML = modes.map((m) => `
     <button class="gb-mode" data-gb-mode="${esc(m.kind)}" data-id="${esc(m.id)}">
-      <span class="gb-mode-emoji" aria-hidden="true">${esc(m.emoji)}</span>
+      <span class="gb-mode-emoji" aria-hidden="true">${m.icon ?? ''}</span>
       <span class="gb-mode-name">${esc(m.label)}</span>
       <span class="gb-mode-desc">${esc(m.desc)}</span>
       <span class="gb-mode-best" data-best>${esc(m.best || '')}</span>
@@ -60,8 +61,8 @@ export const fmtClock = (ms) => { const s = Math.ceil(ms / 1000); return `${Math
 export function renderModeBar(el, parts) {
   el.classList.add('gb-modebar');
   el.innerHTML = parts.map((p) => {
-    if (p.type === 'time') return `<span class="gb-chip gb-time${p.urgent ? ' urgent' : ''}">⏱ ${fmtClock(p.ms)}</span>`;
-    if (p.type === 'hearts') return `<span class="gb-chip gb-hearts">${Array.from({ length: p.max }, (_, i) => `<i class="${i < p.left ? '' : 'lost'}">❤️</i>`).join('')}</span>`;
+    if (p.type === 'time') return `<span class="gb-chip gb-time${p.urgent ? ' urgent' : ''}">${gbIcon('timer')} ${fmtClock(p.ms)}</span>`;
+    if (p.type === 'hearts') return `<span class="gb-chip gb-hearts">${Array.from({ length: p.max }, (_, i) => `<i class="${i < p.left ? '' : 'lost'}">${gbIcon('heart')}</i>`).join('')}</span>`;
     if (p.type === 'round') return `<span class="gb-chip">라운드 ${p.n}</span>`;
     return `<span class="gb-chip">${p.html ?? esc(p.text)}</span>`;
   }).join('');
