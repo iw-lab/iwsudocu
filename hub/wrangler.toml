@@ -9,3 +9,6 @@ account_id = "a043bf13d2ac042d81de8aa70bd1f893"
 binding = "DB"
 database_name = "kanchaeum-hub"
 database_id = "7a8332c4-61b5-4d55-8de7-58112a33ca38"
+
+[vars]
+DIRECT_ORIGINS = "https://kanchaeum.pages.dev,https://*.kanchaeum.pages.dev"   # 직결(키트 1.11.1) — daum Pages 함수 공용 한도(하루 10만)와 무관하게 순위가 뜬다(2026-10-19)

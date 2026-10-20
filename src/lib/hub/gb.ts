@@ -17,7 +17,7 @@ export function preloadHub(): Promise<Kit> {
   if (kit) return Promise.resolve(kit);
   if (!loading) {
     loading = Promise.all([import('@/gb/hubnet.js'), import('@/gb/gb-school.js'), import('@/gb/gb-fullscreen.js')]).then(([net, school, fs]) => {
-      net.configureHub({ key: 'kanchaeum.hub.v1' });
+      net.configureHub({ key: 'kanchaeum.hub.v1', direct: 'https://kanchaeum-hub.simssijjang-a04.workers.dev' });   // 배포본 = 허브 워커 직결(daum Pages 함수 공용 한도와 무관 · 2026-10-20)
       school.configureSchool({ playWord: '판', sfx: { tick: () => soundManager.play('tap'), win: () => soundManager.play('levelUp') } });
       kit = { school, fs };
       return kit;
