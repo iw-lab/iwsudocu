@@ -1,0 +1,14 @@
+{
+ "bg-wide.png": {
+  "engine": "firefly",
+  "model": "gpt-image-2",
+  "reason": "gptweb 실패(rc=8)",
+  "ts": 1793759730
+ },
+ "bg-tall.png": {
+  "engine": "firefly",
+  "model": "gpt-image-2",
+  "reason": "gptweb 실패(rc=8)",
+  "ts": 1793759730
+ }
+}

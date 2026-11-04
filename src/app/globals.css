@@ -166,6 +166,9 @@ html[data-large-text='true'] .sudoku-cell-note {
 
 /* 첫 화면 다듬기 — 키트 파일은 그대로, 칸채움 쪽에서 표면만 정리(아이콘 배지·카드 눌림·배경) */
 .kc-home { background: radial-gradient(120% 60% at 50% -10%, var(--kc-bg-top) 0%, var(--kc-bg) 55%, var(--kc-bg-deep) 100%); }
+/* 첫 화면 뒷그림(2026-11-04 사용자 «뒷 화면이 그냥 단색») — 홈 화면 뒤에만 · 판은 그대로 · 위에 남색 막을 덮어 흰 글씨 대비 유지 */
+.kc-home { background: linear-gradient(180deg, rgba(15, 23, 42, 0.42) 0%, rgba(15, 23, 42, 0.62) 60%, rgba(15, 23, 42, 0.5) 100%), url(/art/bg-wide.webp) center 35% / cover no-repeat, #0f172a; }
+@media (max-aspect-ratio: 4/5) { .kc-home { background-image: linear-gradient(180deg, rgba(15, 23, 42, 0.5) 0%, rgba(15, 23, 42, 0.62) 60%, rgba(15, 23, 42, 0.35) 100%), url(/art/bg-tall.webp); background-position: center bottom; } }
 .kc-home .gb-mode { transition: transform .08s, background-color .12s; }
 .kc-home .gb-mode-emoji { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; font-size: 19px;
   background: rgb(129 140 248 / .12); border: 1px solid rgb(129 140 248 / .2); }
