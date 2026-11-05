@@ -1,6 +1,6 @@
 {
   "kit": "school-hub",
-  "version": "1.21.2",
+  "version": "1.22.0",
   "id": "kanchaeum",
   "host": "pages",
   "client": "src/gb",

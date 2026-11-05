@@ -17,6 +17,7 @@ import { gbIcon } from './gb-icons.js';
 // 🔴 분수는 위아래로 쌓아 그린다 — 문항은 허브 «서버»가 만들어 보내서 게임 쪽 분수 게이트가 못 봤다(2026-10-12 티샷 사용자 제보 «2/3 + 2/4»).
 //    gb-frac.js = kit/frac/frac.js 사본(install.sh 가 복사 — 정본은 하나)
 import { fracHTML } from './gb-frac.js';
+import { playSemSteps } from './gb-sem.js';
 
 const SIDO = { B10: '서울', C10: '부산', D10: '대구', E10: '인천', F10: '광주', G10: '대전', H10: '울산', I10: '세종', J10: '경기',
   K10: '강원', M10: '충북', N10: '충남', P10: '전북', Q10: '전남', R10: '경북', S10: '경남', T10: '제주' };
@@ -24,13 +25,16 @@ const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 export const shortSchool = (n) => String(n || '').replace(/초등학교$/, '초');
 
 const opt = { playWord: '게임', sfx: null };
-/** 게임마다 한 번: playWord = «판»/«곡»/«경기» 등 안내 문구에 들어갈 낱말, sfx = { tick(), win() } (선택) */
+/** 게임마다 한 번: playWord = «판»/«곡»/«경기» 등 안내 문구에 들어갈 낱말, sfx = { tick(), win() } (선택)
+ *  quizStyle: 'sem' = 이용권 문제를 셈 직접 입력으로만(과목 고르기 없음) · freeRuns: n = 하루 n판은 문제 없이(결과 화면 «다시 도전»도 같이 센다 — 넘으면 문제 화면) */
 export function configureSchool(o) { Object.assign(opt, o || {}); }
 // 🔴 playWord 뒤 은/는 — 받침 있으면 은, 없으면 는(게임마다 낱말이 달라 고정 글자로 못 박으면 틀린다 · 2026-11-04 수학도구 조사 관문).
 const playWordEun = () => { const c = String(opt.playWord || '').codePointAt(String(opt.playWord || '').length - 1) - 0xac00; return (c >= 0 && c <= 11171 && c % 28 > 0) ? '은' : '는'; };
 // FREE_PLAY 게임 — 게임이 선언(configureSchool({ freePlay: true }))하거나 허브가 알려 주면(/me free) 이용권 화면·표시를 안 쓴다.
 //   선언이 먼저다: 허브가 안 닿는 순간에도 «문제 풀고 이용권» 단추가 떠 있으면 안 된다.
 const free = () => !!(opt.freePlay || hubState.free);
+const isSem = () => opt.quizStyle === 'sem';
+const SEM_HINT = { q: 3, pass: 2 };   // 허브 sempack.js SEM_Q·SEM_PASS 와 같게(시험 sem-pack.test.mjs)
 
 /* ── 공용 층 ─────────────────────────────────────────────── */
 let layer = null;
@@ -40,7 +44,7 @@ function show(html) {
   layer.hidden = false;
   return layer;
 }
-function hide() { qGen++; if (layer) { layer.hidden = true; layer.innerHTML = ''; } }
+function hide() { qGen++; semCur?.stop(); semCur = null; if (layer) { layer.hidden = true; layer.innerHTML = ''; } }
 /** 덮개 세대 — 닫은 뒤 늦게 온 문제·채점 응답이 덮개를 게임 위에 다시 띄우지 않게(교차검증 codex) */
 let qGen = 0;
 const $ = (s) => layer.querySelector(s);
@@ -231,24 +235,27 @@ async function findSchool() {
 }
 
 /* ── 문제 풀고 이용권 받기 ───────────────────────────────── */
-const quizPref = () => { try { const j = JSON.parse(localStorage.getItem(hubKey('quiz'))) || {}; return { s: ['eng', 'music', 'math'].includes(j.s) ? j.s : (opt.quizSubject || 'math'), g: j.g >= 1 && j.g <= 6 ? j.g : 3 }; } catch { return { s: opt.quizSubject || 'math', g: 3 }; } };
+const quizPref = () => { if (isSem()) { let g = 3; try { const j = JSON.parse(localStorage.getItem(hubKey('quiz'))) || {}; if (j.g >= 1 && j.g <= 6) g = j.g; } catch { /* */ } return { s: 'sem', g }; } try { const j = JSON.parse(localStorage.getItem(hubKey('quiz'))) || {}; return { s: ['eng', 'music', 'math'].includes(j.s) ? j.s : (opt.quizSubject || 'math'), g: j.g >= 1 && j.g <= 6 ? j.g : 3 }; } catch { return { s: opt.quizSubject || 'math', g: 3 }; } };
 const saveQuizPref = (p) => { try { localStorage.setItem(hubKey('quiz'), JSON.stringify(p)); } catch { /* */ } };
 const qz = { pack: null, i: 0, answers: [], busy: false, passed: false, msg: '', review: '' };
 let quizThen = null;
+let semCur = null;   // 지금 도는 셈 조각 화면(닫을 때 키패드 키 입력을 끊는다)
 
 export function openQuiz(then = null, why = '') {
-  qGen++;
+  qGen++; semCur?.stop(); semCur = null;
   quizThen = then;
   Object.assign(qz, { pack: null, i: 0, answers: [], busy: false, passed: false, review: '', msg: why });
   renderQuiz();
 }
 function renderQuiz() {
   const pref = quizPref();
-  const lo = pref.s === 'math' ? 1 : 3;   // 영어·음악 교과는 3학년부터
+  const lo = pref.s === 'math' || pref.s === 'sem' ? 1 : 3;   // 영어·음악 교과는 3학년부터
   if (pref.g < lo) pref.g = lo;
   const grades = []; for (let g = lo; g <= 6; g++) grades.push(`<button class="gb-pill ${g === pref.g ? 'on' : ''}" data-grade="${g}">${g}학년</button>`);
   const q = qz.pack && qz.pack.qs[qz.i];
+  const semOn = !!(qz.pack && qz.pack.sem);
   const body = qz.review ? `<div class="gb-review">${qz.review}</div>`
+    : semOn ? (q ? `<div class="gb-qprog" data-sem-prog></div><div class="gb-sem-play"><div><p class="gb-sem-q" data-sem-q></p><ol class="gb-sem-list" data-sem-list></ol></div><div class="gb-sem-pad" data-sem-pad></div></div>` : '')
     : q ? `<div class="gb-qprog">${qz.pack.qs.map((_, k) => `<i class="${k < qz.i ? 'done' : k === qz.i ? 'now' : ''}"></i>`).join('')}</div>
            <p class="gb-qtext">${fracHTML(q.text)}</p>
            <div class="gb-choices">${q.choices.map((c, k) => `<button class="gb-choice" data-pick="${k}">${fracHTML(c)}</button>`).join('')}</div>`
@@ -256,26 +263,39 @@ function renderQuiz() {
   const goLabel = qz.passed ? (quizThen ? `${gbIcon('play')} ${opt.playWord} 시작` : '한 묶음 더 풀기') : qz.pack ? '처음부터 다시' : qz.review ? '다시 도전' : '문제 시작';
   show(`
     <div class="gb-quiz" data-gb="quiz">
-      <h2>${gbIcon('ticket')} 문제 풀고 이용권 받기</h2>
-      <p class="gb-hint">${hubState.q}문제 중 <b>${hubState.pass}개</b> 맞히면 <b>이용권 ${hubState.per}장</b> · ${opt.playWord} 한 판 = 이용권 1장 · 지금 <b>${hubState.tix}장</b></p>
+      ${semOn ? '' : `<h2>${gbIcon('ticket')} ${isSem() ? '셈 풀고' : '문제 풀고'} 이용권 받기</h2>`}
+      ${semOn ? '' : isSem() ? `<p class="gb-hint">${SEM_HINT.q}문제 중 <b>${SEM_HINT.pass}개</b>를 답 안 보고 풀면 <b>이용권 ${hubState.per}장</b> · 1장에 한 ${opt.playWord} · 지금 <b>${hubState.tix}장</b></p>` : `<p class="gb-hint">${hubState.q}문제 중 <b>${hubState.pass}개</b> 맞히면 <b>이용권 ${hubState.per}장</b> · ${opt.playWord} 한 판 = 이용권 1장 · 지금 <b>${hubState.tix}장</b></p>`}
       ${qz.pack ? '' : `<div class="gb-opts">
-        <div class="gb-seg">${[['math', '수학'], ['eng', '영어'], ['music', '음악']].map(([v, t]) => `<button class="gb-pill ${pref.s === v ? 'on' : ''}" data-subj="${v}">${t}</button>`).join('')}</div>
+        ${isSem() ? '' : `<div class="gb-seg">${[['math', '수학'], ['eng', '영어'], ['music', '음악']].map(([v, t]) => `<button class="gb-pill ${pref.s === v ? 'on' : ''}" data-subj="${v}">${t}</button>`).join('')}</div>`}
         <div class="gb-seg">${grades.join('')}</div></div>`}
       ${body}
       <p class="gb-msg" data-frac-ok>${qz.msg}</p>
       <div class="gb-btns">
-        <button class="gb-btn" data-qgo ${qz.busy ? 'disabled' : ''}>${goLabel}</button>
+        ${semOn ? '' : `<button class="gb-btn" data-qgo ${qz.busy ? 'disabled' : ''}>${goLabel}</button>`}
         <button class="gb-btn ghost" data-qback>${quizThen ? '취소' : '닫기'}</button>
       </div>
     </div>`);
   $$('[data-subj]').forEach((b) => b.onclick = () => { saveQuizPref({ ...pref, s: b.dataset.subj }); renderQuiz(); });
   $$('[data-grade]').forEach((b) => b.onclick = () => { saveQuizPref({ ...pref, g: Number(b.dataset.grade) }); renderQuiz(); });
   $$('[data-pick]').forEach((b) => b.onclick = () => pickAnswer(Number(b.dataset.pick)));
-  $('[data-qgo]').onclick = () => startPack();
+  const goBtn = $('[data-qgo]'); if (goBtn) goBtn.onclick = () => startPack();
   $('[data-qback]').onclick = () => { quizThen = null; hide(); paintRank(); };
   const free = $('[data-qfree]');
   // «그냥 하기» = 이번 판만 학교 점수 없이(허브 전체를 오프라인으로 찍지 않는다 — 교차검증 grok)
   if (free) free.onclick = () => { autoEnterFullscreen(); const go = quizThen; quizThen = null; hide(); go && go(true); };
+  if (semOn && q) playSemQuestion();
+}
+/** 셈 한 문제 — 조각을 다 치면 다음 문제, 마지막이면 채점 */
+function playSemQuestion() {
+  const gen = qGen, pack = qz.pack, q = pack.qs[qz.i];
+  $('[data-sem-prog]').innerHTML = pack.qs.map((_, k) => `<i class="${k < qz.i ? 'done' : k === qz.i ? 'now' : ''}"></i>`).join('');
+  $('[data-sem-q]').innerHTML = fracHTML(q.q);
+  semCur = playSemSteps({ list: $('[data-sem-list]'), padHost: $('[data-sem-pad]'), steps: q.steps, decimal: q.dec, onRight: () => opt.sfx?.tick?.() });
+  semCur.done.then(({ vals, stopped }) => {
+    if (stopped || gen !== qGen) return;
+    semCur = null; qz.answers[qz.i] = vals; qz.i += 1; opt.sfx?.tick?.();
+    if (qz.i < pack.qs.length) playSemQuestion(); else submitPack();
+  });
 }
 function pickAnswer(k) {
   if (!qz.pack || qz.busy) return;
@@ -291,9 +311,9 @@ async function submitPack() {
     if (j.tooFast) { await new Promise((r) => setTimeout(r, Math.min(8000, j.waitMs + 200))); j = await gradePack(pack.pid, qz.answers); }
     if (gen !== qGen) return;
     if (j.error) throw new Error(j.error);
-    qz.review = pack.qs.map((q, k) => `<div class="${j.right[k] ? 'ok' : 'no'}">${gbIcon(j.right[k] ? 'check' : 'x', j.right[k] ? 'gb-ic-ok' : 'gb-ic-no')} ${fracHTML(q.text.replace('= ?', '').replace('→ ?', '→'))} <b>${fracHTML(q.choices[j.answers[k]])}</b></div>`).join('');
+    qz.review = pack.sem ? pack.qs.map((q, k) => `<div class="${j.right[k] ? 'ok' : 'no'}">${gbIcon(j.right[k] ? 'check' : 'x', j.right[k] ? 'gb-ic-ok' : 'gb-ic-no')} ${fracHTML(q.q)} = <b>${fracHTML(q.final)}</b></div>`).join('') : pack.qs.map((q, k) => `<div class="${j.right[k] ? 'ok' : 'no'}">${gbIcon(j.right[k] ? 'check' : 'x', j.right[k] ? 'gb-ic-ok' : 'gb-ic-no')} ${fracHTML(q.text.replace('= ?', '').replace('→ ?', '→'))} <b>${fracHTML(q.choices[j.answers[k]])}</b></div>`).join('');
     if (j.ticket) { qz.passed = true; qz.msg = `${gbIcon('sparkle')} ${j.total}문제 중 ${j.correct}문제 정답! <b>이용권 +${j.ticket}</b> (지금 ${j.tix}장)`; opt.sfx?.win?.(); }
-    else { qz.passed = false; qz.msg = `${j.total}문제 중 ${j.correct}문제 — <b>${j.pass}개</b> 이상 맞히면 이용권! 다시 도전해요`; }
+    else { qz.passed = false; qz.msg = `${j.total}문제 중 ${j.correct}문제 — <b>${j.pass}개</b> 이상 ${pack.sem ? '답 안 보고 풀면' : '맞히면'} 이용권! 다시 도전해요`; }
   } catch {
     // 🔴 채점 서버만 죽어도 이용권 0 인 아이가 갇힌다 — 시작 관문에서 왔으면 «그냥 하기» 출구(교차검증 codex)
     qz.msg = quizThen ? '채점 서버가 잠시 대답이 없어요. <button class="gb-link" data-qfree>학교 점수 없이 그냥 하기</button>' : '채점 서버가 잠시 대답이 없어요. 조금 뒤에 다시 해 주세요.';
@@ -327,7 +347,8 @@ export async function gbGate(go, { kind = 'play', chain = false } = {}) {
   // 🔴 시작 단추 두 번 누름(아이들은 자주 그런다) = 이용권 2장·게임 두 번 시작 — 관문 하나가 도는 동안 다음 것은 버린다
   if (gating) return;
   gating = true;
-  try { await (chain ? chainOnce(go, kind) : gateOnce(go, kind)); } finally { gating = false; }
+  // freeRuns 게임은 «다시 도전»도 첫 화면 시작과 같이 센다(4판째부터 문제 — 2026-11-05 사용자 «공부는 언제하니?»: 이어 하기만 누르면 문제를 한 번도 안 풀었다)
+  try { await (chain && !(opt.freeRuns > 0) ? chainOnce(go, kind) : gateOnce(go, kind)); } finally { gating = false; }
 }
 /**
  * 🔗 이어 하기(1.13 · 2026-10-22 보카웜 사용자 «게임할 때는 문제 빼라» — 결과 화면 «다음 단계·다시 도전»에서 문제 창이 떠
@@ -349,12 +370,20 @@ async function chainOnce(go, kind) {
 const kstDay = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 export function takeDayFree(store = globalThis.localStorage, day = kstDay()) {
   if (opt.dayFree === false) return false;
-  try { const k = hubKey('dayFree'); if (store.getItem(k) === day) return false; store.setItem(k, day); return true; } catch { return false; }
+  const max = opt.freeRuns > 0 ? opt.freeRuns : 1;
+  try {
+    const k = hubKey('dayFree'), [d, n] = String(store.getItem(k) || '').split('|'), used = d === day ? (Number(n) || 1) : 0;
+    if (used >= max) return false;
+    store.setItem(k, max > 1 ? `${day}|${used + 1}` : day);
+    freeLeft = max - used - 1;
+    return true;
+  } catch { return false; }
 }
+let freeLeft = 0;
 function gbNote(html, ms = 3200) {
   try { const el = document.createElement('div'); el.className = 'gb-note'; el.setAttribute('role', 'status'); el.dataset.gbNote = ''; el.innerHTML = html; document.body.appendChild(el); setTimeout(() => el.remove(), ms); } catch { /* */ }
 }
-const dayFreeGo = (go) => { gbNote(`${gbIcon('sparkle')} 오늘 첫 ${opt.playWord}${playWordEun()} 문제 없이! 다음 ${opt.playWord}부터 문제를 풀면 학교 점수가 쌓여요`); go(null); };
+const dayFreeGo = (go) => { gbNote(opt.freeRuns > 1 ? (freeLeft > 0 ? `${gbIcon('sparkle')} 문제 없이 ${freeLeft}${opt.playWord} 더 할 수 있어요! 문제를 풀면 학교 점수가 쌓여요` : `${gbIcon('sparkle')} 이번 ${opt.playWord}까지 문제 없이! 다음 ${opt.playWord}부터는 문제를 풀어요`) : `${gbIcon('sparkle')} 오늘 첫 ${opt.playWord}${playWordEun()} 문제 없이! 다음 ${opt.playWord}부터 문제를 풀면 학교 점수가 쌓여요`); go(null); };
 async function gateOnce(go, kind) {
   // 모름이거나, «안 닿음» 판정이 1분 넘게 묵었으면 다시 본다 — 한 번 순단이 세션 끝까지 학교 점수를 끊지 않게(교차검증 grok)
   if (hubState.online === null || (hubState.online === false && Date.now() - (hubState.checkedAt || 0) > 60000)) await refreshMe();
