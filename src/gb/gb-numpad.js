@@ -15,6 +15,14 @@ const KEYS_DEC = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'del', 
 const KEYS_NEG = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '±', '0', 'del', 'ok'];
 const KEYS_NEG_DEC = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '±', 'del', 'ok'];
 
+// 손을 뗄 때 오는 클릭을 먹는다 — 키는 누르는 순간 반응하는데, «확인»으로 화면이 바뀌면 그 클릭이 그 자리에 새로 온 단추에 떨어진다.
+//   셈 이용권에서 문제가 넘어갈 때 «취소»가 눌려 3문제를 영영 못 끝냈다(2026-11-05 사용자 «3문제 푸는데 계속 문제 시작을 누르게» · «게임 시작 안 됨»)
+function eatGhostClick(doc, key) {
+  const off = () => { doc.removeEventListener('click', eat, true); clearTimeout(t); };
+  const eat = (e) => { off(); if (e.detail !== 0 && !key.contains(e.target)) { e.preventDefault(); e.stopPropagation(); } };
+  doc.addEventListener('click', eat, true); const t = setTimeout(off, 700);
+}
+
 export function mountNumpad(host, { input, maxLength = 6, onSubmit, okLabel = '확인', allowNegative = false, allowDecimal = false } = {}) {
   injectNumpadCSS(host.ownerDocument || document);
   const doc = host.ownerDocument || document;
@@ -43,7 +51,7 @@ export function mountNumpad(host, { input, maxLength = 6, onSubmit, okLabel = '�
   for (const k of keys) {
     const b = doc.createElement('button'); b.type = 'button'; b.className = 'gb-numpad-key' + (k === 'ok' ? ' ok' + okWide : k === 'del' ? ' del' : k === '±' ? ' sign' : '');
     b.textContent = k === 'del' ? '⌫' : k === 'ok' ? okLabel : k; b.setAttribute('aria-label', k === 'del' ? '지우기' : k === 'ok' ? okLabel : k === '±' ? '부호 바꾸기(음수)' : k);
-    b.addEventListener('pointerdown', (e) => { e.preventDefault(); press(k); });
+    b.addEventListener('pointerdown', (e) => { e.preventDefault(); eatGhostClick(doc, b); press(k); });
     b.addEventListener('click', (e) => { if (e.detail === 0) press(k); });   // 키보드 접근(Tab+Space)
     btns[k] = b; pad.appendChild(b);
   }

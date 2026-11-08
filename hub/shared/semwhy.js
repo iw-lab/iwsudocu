@@ -48,7 +48,11 @@ function one(stage, st, j, q) {
       if (q.includes('(') && j === 0) return '괄호 안 먼저';
       if ((s.op === 'mul' || s.op === 'div') && /[+−]/.test(q.replace(/\([^)]*\)/g, ''))) return '×÷가 +−보다 먼저';   /* 괄호 안 + 는 셈하지 않는다 — «(5 + 2) × 8» 의 7 × 8 을 «×÷ 먼저» 라 했다(2026-11-04 전수 확인) */
       return '앞에서부터 차례로';
-    case 'g5_lcd': return fracWhy(st, j, '같은 분모로 바꾸기');
+    case 'g5_lcd': {   // 나눈 뒤에도 어느 분수를 바꾸는 중인지 보이게 — 조각은 ÷ 와 × 로 쪼갰다
+      const m = q.match(/(\d+)\/(\d+) \+ (\d+)\/(\d+)/), L = st[0].a;
+      if (m && j >= 1 && j <= 4) { const [u, v] = j <= 2 ? [m[1], m[2]] : [m[3], m[4]]; return `${u}/${v} = □/${L} · ${j % 2 ? '분모가 몇 배?' : '분자도 같은 배로'}`; }
+      return fracWhy(st, j, '같은 분모로 바꾸기');
+    }
     case 'g5_fmul': case 'g6_fdiv': return fracWhy(st, j, '', stage === 'g6_fdiv');
     case 'g6_ddiv': return j === 0 ? '소수점 떼고 나누기' : '소수점 자리 되돌리기';
     case 'g6_ratio': return j === 0 ? '앞쪽이 몇 배인지' : '뒤쪽도 같은 배로';
