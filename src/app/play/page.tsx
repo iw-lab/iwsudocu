@@ -49,6 +49,9 @@ export default function PlayPage() {
   );
   const freeReviveAvailable = lastFreeReviveDate !== kstToday();
 
+  // 처음 온 아이는 튜토리얼 없이 바로 판으로 — 안내는 첫 판 결과가 쌓인 뒤(두 번째 idle)에만 보여준다
+  const hasPlayedBefore = useUserStore((s) => s.profile.stats.totalGamesPlayed > 0);
+
   // Rewarded ads only exist in a wrapper build with an ad unit configured; on
   // the web this stays false and the free daily continue is offered instead.
   const [adReady, setAdReady] = useState(false);
@@ -265,7 +268,7 @@ export default function PlayPage() {
   if (status === 'idle') {
     return (
       <div className="min-h-screen pb-24 pt-16">
-        <OnboardingModal />
+        {hasPlayedBefore && <OnboardingModal />}
         <Header />
         <main className="mx-auto max-w-lg px-4 pt-4">
           <DifficultySelector onSelect={handleSelectDifficulty} />
